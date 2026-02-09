@@ -256,7 +256,6 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::source::Sysctl;
 
     fn sample() -> Snapshot {
         Snapshot {

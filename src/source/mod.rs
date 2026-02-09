@@ -6,6 +6,9 @@ use std::path::Path;
 
 pub mod snapshot;
 
+#[cfg(target_os = "macos")]
+pub mod macos;
+
 pub use snapshot::{Snapshot, SnapshotError};
 
 /// A sysctl value. Arrays (e.g. `hw.cachesize`) are stored as space-separated strings.
@@ -168,6 +171,12 @@ impl Sources {
     }
 }
 
+#[cfg(target_os = "macos")]
+fn live_sysctl() -> Box<dyn Sysctl> {
+    Box::new(macos::LiveSysctl)
+}
+
+#[cfg(not(target_os = "macos"))]
 fn live_sysctl() -> Box<dyn Sysctl> {
     Box::new(Stub)
 }

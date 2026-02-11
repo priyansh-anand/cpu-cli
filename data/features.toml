@@ -1,0 +1,165 @@
+# How `cpu` shows CPU feature flags.
+#
+# Each entry maps a raw flag, spelled exactly as the OS reports it, to a display name and a group.
+# Flags without an entry still appear in `--json` under `features.raw`, but not in the table, so
+# the table stays a curated summary instead of a dump. Entries are shown in file order.
+#
+# group: simd | crypto | virtualization | security | other
+
+# --- macOS on Apple Silicon: hw.optional.arm.* ---
+
+[[feature]]
+raw = "AdvSIMD"
+name = "NEON"
+group = "simd"
+desc = "Advanced SIMD: 128-bit vector instructions"
+
+[[feature]]
+raw = "FEAT_FP16"
+name = "FP16"
+group = "simd"
+desc = "Half-precision floating-point arithmetic"
+
+[[feature]]
+raw = "FEAT_BF16"
+name = "BF16"
+group = "simd"
+desc = "BFloat16 arithmetic for machine learning"
+
+[[feature]]
+raw = "FEAT_I8MM"
+name = "I8MM"
+group = "simd"
+desc = "Int8 matrix multiply"
+
+[[feature]]
+raw = "FEAT_DotProd"
+name = "DotProd"
+group = "simd"
+desc = "Int8 dot-product instructions"
+
+[[feature]]
+raw = "FEAT_FHM"
+name = "FHM"
+group = "simd"
+desc = "Half-precision multiply-accumulate into single precision"
+
+[[feature]]
+raw = "FEAT_SME"
+name = "SME"
+group = "simd"
+desc = "Scalable Matrix Extension"
+
+[[feature]]
+raw = "FEAT_SME2"
+name = "SME2"
+group = "simd"
+desc = "Scalable Matrix Extension version 2"
+
+[[feature]]
+raw = "FEAT_SME2p1"
+name = "SME2.1"
+group = "simd"
+desc = "Scalable Matrix Extension version 2.1"
+
+[[feature]]
+raw = "FEAT_AES"
+name = "AES"
+group = "crypto"
+desc = "AES encryption instructions"
+
+[[feature]]
+raw = "FEAT_PMULL"
+name = "PMULL"
+group = "crypto"
+desc = "Polynomial multiply, used by AES-GCM"
+
+[[feature]]
+raw = "FEAT_SHA1"
+name = "SHA1"
+group = "crypto"
+desc = "SHA-1 hash instructions"
+
+[[feature]]
+raw = "FEAT_SHA256"
+name = "SHA256"
+group = "crypto"
+desc = "SHA-256 hash instructions"
+
+[[feature]]
+raw = "FEAT_SHA512"
+name = "SHA512"
+group = "crypto"
+desc = "SHA-512 hash instructions"
+
+[[feature]]
+raw = "FEAT_SHA3"
+name = "SHA3"
+group = "crypto"
+desc = "SHA-3 hash instructions"
+
+[[feature]]
+raw = "FEAT_CRC32"
+name = "CRC32"
+group = "crypto"
+desc = "CRC32 checksum instructions"
+
+[[feature]]
+raw = "FEAT_PAuth"
+name = "PAC"
+group = "security"
+desc = "Pointer authentication (signed return addresses)"
+
+[[feature]]
+raw = "FEAT_BTI"
+name = "BTI"
+group = "security"
+desc = "Branch target identification"
+
+[[feature]]
+raw = "FEAT_MTE"
+name = "MTE"
+group = "security"
+desc = "Memory tagging extension"
+
+[[feature]]
+raw = "FEAT_SSBS"
+name = "SSBS"
+group = "security"
+desc = "Speculative store bypass safe"
+
+[[feature]]
+raw = "FEAT_DIT"
+name = "DIT"
+group = "security"
+desc = "Data-independent timing for constant-time code"
+
+[[feature]]
+raw = "FEAT_SB"
+name = "SB"
+group = "security"
+desc = "Speculation barrier instruction"
+
+[[feature]]
+raw = "FEAT_CSV2"
+name = "CSV2"
+group = "security"
+desc = "Hardening against Spectre v2 branch-target injection"
+
+[[feature]]
+raw = "FEAT_CSV3"
+name = "CSV3"
+group = "security"
+desc = "Hardening against Meltdown-style data leaks"
+
+[[feature]]
+raw = "FEAT_LSE"
+name = "LSE"
+group = "other"
+desc = "Large System Extensions: atomic read-modify-write instructions"
+
+[[feature]]
+raw = "FEAT_LSE2"
+name = "LSE2"
+group = "other"
+desc = "Relaxed alignment for atomic loads and stores"

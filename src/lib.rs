@@ -6,4 +6,6 @@
 pub mod model;
 pub mod units;
 
+pub mod collect;
+pub mod db;
 pub mod source;

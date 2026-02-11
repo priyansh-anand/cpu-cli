@@ -1,0 +1,5 @@
+"machdep.cpu.brand_string" = "Apple M1"
+"hw.physicalcpu" = 8
+"hw.logicalcpu" = 8
+"hw.optional.arm64" = 1
+"hw.l2cachesize" = 4194304

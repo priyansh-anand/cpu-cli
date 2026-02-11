@@ -1,0 +1,6 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "macos"
+arch = "aarch64"
+created_unix = 1790208000
+note = "SYNTHETIC: macOS 11 style, no hw.perflevel* keys; top-level hw.l2cachesize must be ignored"

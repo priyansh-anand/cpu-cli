@@ -1,0 +1,101 @@
+use std::path::PathBuf;
+use std::process::{Command, Output};
+
+fn cpu() -> Command {
+    let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpu"));
+    cmd.env_remove("CLICOLOR_FORCE")
+        .env_remove("NO_COLOR")
+        .env_remove("LC_ALL")
+        .env_remove("LC_CTYPE")
+        .env("LANG", "en_US.UTF-8");
+    cmd
+}
+
+fn fixture(name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(name)
+}
+
+fn run(cmd: &mut Command) -> (i32, String, String) {
+    let Output {
+        status,
+        stdout,
+        stderr,
+    } = cmd.output().expect("cpu runs");
+    (
+        status.code().expect("exited normally"),
+        String::from_utf8(stdout).unwrap(),
+        String::from_utf8(stderr).unwrap(),
+    )
+}
+
+#[test]
+fn piped_output_is_plain_ascii() {
+    let (code, out, err) = run(cpu().arg("--from").arg(fixture("apple-m5")));
+    assert_eq!(code, 0, "{err}");
+    assert!(
+        out.starts_with("Identity\n  Name          Apple M5\n"),
+        "{out}"
+    );
+    assert!(out.is_ascii() && !out.contains('\x1b'), "{out}");
+}
+
+#[test]
+fn color_always_gives_boxes_even_in_a_pipe() {
+    let (code, out, _) = run(cpu()
+        .args(["--color", "always", "--from"])
+        .arg(fixture("apple-m5")));
+    assert_eq!(code, 0);
+    assert!(out.contains("╭") && out.contains("\x1b["), "{out}");
+}
+
+#[test]
+fn json_output() {
+    let (code, out, _) = run(cpu().arg("--json").arg("--from").arg(fixture("apple-m5")));
+    assert_eq!(code, 0);
+    let v: serde_json::Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["schema_version"], 1);
+}
+
+#[test]
+fn missing_snapshot_exits_1() {
+    let (code, out, err) = run(cpu().args(["--from", "/definitely/not/here"]));
+    assert_eq!(code, 1);
+    assert!(out.is_empty());
+    assert!(
+        err.starts_with("cpu: cannot read snapshot /definitely/not/here"),
+        "{err}"
+    );
+}
+
+#[test]
+fn newer_snapshot_version_exits_1() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("meta.toml"), "snapshot_version = 2\n").unwrap();
+    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(code, 1);
+    assert!(err.contains("unsupported snapshot version 2"), "{err}");
+}
+
+#[test]
+fn unidentifiable_machine_exits_1_and_asks_for_a_dump() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("meta.toml"),
+        "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"macos\"\narch = \"aarch64\"\ncreated_unix = 0\n",
+    )
+    .unwrap();
+    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("could not identify this CPU") && err.contains("cpu --dump"),
+        "{err}"
+    );
+}
+
+#[test]
+fn unknown_flag_exits_2() {
+    let (code, _, _) = run(cpu().arg("--bogus"));
+    assert_eq!(code, 2);
+}

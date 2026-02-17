@@ -1,0 +1,345 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cpu --json output",
+  "description": "Schema version 1. Unknown values are omitted, never null. Every value records where it came from.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "identity",
+    "topology"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "identity": {
+      "$ref": "#/$defs/identity"
+    },
+    "topology": {
+      "$ref": "#/$defs/topology"
+    },
+    "clusters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cluster"
+      }
+    },
+    "shared_caches": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cache"
+      }
+    },
+    "features": {
+      "$ref": "#/$defs/features"
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "origin": {
+      "enum": [
+        "detected",
+        "derived",
+        "database"
+      ]
+    },
+    "fact_string": {
+      "type": "object",
+      "required": [
+        "value",
+        "origin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "from": {
+          "type": "string"
+        }
+      }
+    },
+    "fact_uint": {
+      "type": "object",
+      "required": [
+        "value",
+        "origin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "from": {
+          "type": "string"
+        }
+      }
+    },
+    "fact_bool": {
+      "type": "object",
+      "required": [
+        "value",
+        "origin"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "type": "boolean"
+        },
+        "origin": {
+          "$ref": "#/$defs/origin"
+        },
+        "from": {
+          "type": "string"
+        }
+      }
+    },
+    "identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "vendor": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "name": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "arch": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "isa_level": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "x86_family": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "x86_model": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "x86_stepping": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "arm_midr": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "microcode": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "hypervisor": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "translated": {
+          "$ref": "#/$defs/fact_bool"
+        }
+      }
+    },
+    "topology": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sockets": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "physical_cores": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "logical_cpus": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "smt_per_core": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "numa_nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "cpus"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "cpus": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "clocks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "max": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "current": {
+          "$ref": "#/$defs/fact_uint"
+        }
+      }
+    },
+    "cache": {
+      "type": "object",
+      "required": [
+        "level",
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "kind": {
+          "enum": [
+            "instruction",
+            "data",
+            "unified"
+          ]
+        },
+        "size": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "shared_by": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "instances": {
+          "$ref": "#/$defs/fact_uint"
+        }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "performance",
+            "efficiency",
+            "uniform"
+          ]
+        },
+        "name": {
+          "$ref": "#/$defs/fact_string"
+        },
+        "cores": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "threads": {
+          "$ref": "#/$defs/fact_uint"
+        },
+        "clock": {
+          "$ref": "#/$defs/clocks"
+        },
+        "caches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cache"
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "required": [
+        "groups",
+        "raw"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "group",
+              "features"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "group": {
+                "enum": [
+                  "simd",
+                  "crypto",
+                  "virtualization",
+                  "security",
+                  "other"
+                ]
+              },
+              "features": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "raw",
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "raw": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "raw": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "required": [
+        "from",
+        "message"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

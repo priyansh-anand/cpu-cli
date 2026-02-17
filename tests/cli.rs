@@ -99,3 +99,32 @@ fn unknown_flag_exits_2() {
     let (code, _, _) = run(cpu().arg("--bogus"));
     assert_eq!(code, 2);
 }
+
+#[test]
+fn dump_writes_a_snapshot_that_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("me.tar.gz");
+    let (code, out, err) = run(cpu().arg("--dump").arg(&path));
+    assert_eq!(code, 0, "{err}");
+    assert_eq!(out.trim(), path.display().to_string());
+    let snap = cpu_cli::source::Snapshot::open(&path).unwrap();
+    assert_eq!(snap.meta.os, std::env::consts::OS);
+}
+
+#[test]
+fn dump_and_from_conflict() {
+    let (code, _, err) = run(cpu().args(["--dump", "x.tar.gz", "--from", "y"]));
+    assert_eq!(code, 2);
+    assert!(err.contains("cannot be used with"), "{err}");
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn a_dump_replays_exactly_like_the_live_machine() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("me.tar.gz");
+    assert_eq!(run(cpu().arg("--dump").arg(&path)).0, 0);
+    let (_, live, _) = run(cpu().arg("--json"));
+    let (_, replayed, _) = run(cpu().arg("--json").arg("--from").arg(&path));
+    assert_eq!(live, replayed);
+}

@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
+readme = "README.md"
 description = "A modern, pretty CPU viewer: see what silicon you are actually running"
 keywords = ["cpu", "lscpu", "hardware", "cli", "topology"]
 categories = ["command-line-utilities", "hardware-support"]

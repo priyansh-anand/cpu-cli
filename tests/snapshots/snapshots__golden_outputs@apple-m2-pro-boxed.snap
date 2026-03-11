@@ -1,0 +1,26 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+╭ Identity ─────────────────────────────────────────────────────╮
+│ Name          Apple M2 Pro                                    │
+│ Vendor        Apple                                           │
+│ Architecture  arm64                                           │
+╰───────────────────────────────────────────────────────────────╯
+╭ Topology ─────────────────────────────────────────────────────╮
+│ Cores     12 physical · 12 logical · no SMT                   │
+│ Clusters  8 × Performance · 4 × Efficiency                    │
+╰───────────────────────────────────────────────────────────────╯
+╭ Cache ─┬─────────────────────┬────────────────────────────────╮
+│ Level  │ Performance         │ Efficiency                     │
+├────────┼─────────────────────┼────────────────────────────────┤
+│ L1i    │ 192 KiB / core      │ 128 KiB / core                 │
+│ L1d    │ 128 KiB / core      │ 64 KiB / core                  │
+│ L2     │ 16 MiB / 4 cores ×2 │ 4 MiB / 4 cores                │
+╰────────┴─────────────────────┴────────────────────────────────╯
+╭ Features ─────────────────────────────────────────────────────╮
+│ SIMD      NEON · FP16 · BF16 · I8MM · DotProd · FHM           │
+│ Crypto    AES · PMULL · SHA1 · SHA256 · SHA512 · SHA3 · CRC32 │
+│ Security  PAC · BTI · SSBS · DIT · SB · CSV2 · CSV3           │
+│ Other     LSE · LSE2                                          │
+╰───────────────────────────────────────────────────────────────╯

@@ -1,0 +1,11 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+Identity
+  Name          Apple M1
+  Vendor        Apple
+  Architecture  arm64
+
+Topology
+  Cores  8 physical, 8 logical, no SMT

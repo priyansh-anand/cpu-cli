@@ -1,0 +1,54 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "Apple",
+      "origin": "derived"
+    },
+    "name": {
+      "value": "Apple M1",
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.brand_string"
+    },
+    "arch": {
+      "value": "arm64",
+      "origin": "detected",
+      "from": "sysctl:hw.optional.arm64"
+    }
+  },
+  "topology": {
+    "physical_cores": {
+      "value": 8,
+      "origin": "detected",
+      "from": "sysctl:hw.physicalcpu"
+    },
+    "logical_cpus": {
+      "value": 8,
+      "origin": "detected",
+      "from": "sysctl:hw.logicalcpu"
+    },
+    "smt_per_core": {
+      "value": 1,
+      "origin": "derived"
+    }
+  },
+  "clusters": [
+    {
+      "kind": "uniform",
+      "cores": {
+        "value": 8,
+        "origin": "detected",
+        "from": "sysctl:hw.physicalcpu"
+      },
+      "threads": {
+        "value": 8,
+        "origin": "detected",
+        "from": "sysctl:hw.logicalcpu"
+      }
+    }
+  ]
+}

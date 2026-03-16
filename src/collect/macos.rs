@@ -47,6 +47,11 @@ impl Reader<'_> {
             self.reject(key, "empty value".to_string());
             return None;
         }
+        // Snapshots can come from anyone; a control character could drive the reader's terminal.
+        if value.chars().any(char::is_control) {
+            self.reject(key, "contains control characters".to_string());
+            return None;
+        }
         Some(Fact::detected(value.to_string(), source(key)))
     }
 
@@ -400,6 +405,27 @@ mod tests {
         let cpu = collect(&with(&[("hw.nperflevels", Some(Int(99)))]));
         assert_eq!(cpu.clusters.len(), 1);
         assert_eq!(cpu.diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn control_characters_are_rejected_not_printed() {
+        let cpu = collect(&with(&[
+            (
+                "machdep.cpu.brand_string",
+                Some(Str("Apple \u{1b}]0;pwned\u{7}M5".into())),
+            ),
+            ("hw.perflevel0.name", Some(Str("S\tuper".into()))),
+        ]));
+        assert_eq!(cpu.identity.name, None);
+        assert_eq!(cpu.clusters[0].name, None);
+        let from: Vec<&str> = cpu.diagnostics.iter().map(|d| d.from.as_str()).collect();
+        assert_eq!(
+            from,
+            [
+                "sysctl:machdep.cpu.brand_string",
+                "sysctl:hw.perflevel0.name"
+            ]
+        );
     }
 
     #[test]

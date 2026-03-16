@@ -128,3 +128,31 @@ fn a_dump_replays_exactly_like_the_live_machine() {
     let (_, replayed, _) = run(cpu().arg("--json").arg("--from").arg(&path));
     assert_eq!(live, replayed);
 }
+
+#[test]
+fn hostile_snapshot_values_never_reach_the_terminal() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("meta.toml"),
+        "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"macos\"\narch = \"aarch64\"\ncreated_unix = 0\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("sysctl.toml"),
+        "\"machdep.cpu.brand_string\" = \"Apple \\u001b]0;pwned\\u0007M5\"\n\"hw.logicalcpu\" = 8\n",
+    )
+    .unwrap();
+    for flags in [
+        &["--plain"][..],
+        &["--color", "always"][..],
+        &["--json"][..],
+    ] {
+        let (code, out, err) = run(cpu().args(flags).arg("--from").arg(dir.path()));
+        assert_eq!(code, 0, "{err}");
+        assert!(
+            !out.contains('\x1b') || flags == ["--color", "always"],
+            "{flags:?}: {out:?}"
+        );
+        assert!(!out.contains("pwned"), "{flags:?}: {out:?}");
+    }
+}

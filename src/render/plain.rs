@@ -3,6 +3,13 @@
 
 use super::view::{Body, Section, column_widths, pad, width};
 
+/// `s` with every non-ASCII character replaced by `?`, so plain output is ASCII whatever the OS reported.
+fn ascii(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_ascii() { c } else { '?' })
+        .collect()
+}
+
 pub fn render(sections: &[Section]) -> String {
     let mut out: Vec<String> = Vec::new();
     for (i, section) in sections.iter().enumerate() {
@@ -16,6 +23,7 @@ pub fn render(sections: &[Section]) -> String {
                 for pair in pairs {
                     for (j, line) in pair.lines.iter().enumerate() {
                         let label = if j == 0 { pair.label } else { "" };
+                        let line = ascii(line);
                         out.push(
                             format!("  {}  {line}", pad(label, label_width))
                                 .trim_end()
@@ -25,7 +33,15 @@ pub fn render(sections: &[Section]) -> String {
                 }
             }
             Body::Grid(grid) => {
-                let table = grid.table();
+                let cells: Vec<Vec<String>> = grid
+                    .table()
+                    .iter()
+                    .map(|row| row.iter().map(|c| ascii(c)).collect())
+                    .collect();
+                let table: Vec<Vec<&str>> = cells
+                    .iter()
+                    .map(|row| row.iter().map(String::as_str).collect())
+                    .collect();
                 let widths = column_widths(&table);
                 for cells in &table {
                     let line: Vec<String> =
@@ -78,6 +94,16 @@ Identity
 Topology
   Cores  8 physical, 8 logical, no SMT
 ";
+
+    #[test]
+    fn non_ascii_values_are_replaced_so_plain_stays_ascii() {
+        let mut cpu = crate::model::Cpu::default();
+        cpu.identity.name = Some(crate::model::Fact::derived("Apple M5 ™".to_string()));
+        assert_eq!(
+            render(&build(&cpu, &ASCII)),
+            "Identity\n  Name  Apple M5 ?\n"
+        );
+    }
 
     #[test]
     fn apple_m5_plain_output() {

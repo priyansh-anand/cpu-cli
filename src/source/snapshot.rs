@@ -16,6 +16,12 @@ use super::{Os, Sources, Stub, SysctlValue};
 
 pub const SNAPSHOT_VERSION: u32 = 1;
 
+/// Largest single file a snapshot may contain. Real inputs are a few KiB; this stops a hostile or
+/// mistaken `--from` (a gzip bomb, `--from ~/Downloads`) from exhausting memory.
+const MAX_ENTRY_BYTES: u64 = 16 << 20;
+/// Largest total a snapshot may contain.
+const MAX_TOTAL_BYTES: u64 = 64 << 20;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Meta {
     pub snapshot_version: u32,
@@ -204,31 +210,72 @@ fn parse_sysctl(text: &str) -> Result<BTreeMap<String, SysctlValue>, SnapshotErr
         .collect())
 }
 
+/// Whether a path inside a snapshot is part of the format. Anything else is ignored unread.
+fn in_layout(name: &str) -> bool {
+    name == "meta.toml" || name == "sysctl.toml" || name.starts_with("fs/")
+}
+
+/// Reads one entry, refusing anything past the per-entry and running-total limits.
+fn read_capped(reader: impl Read, name: &str, total: &mut u64) -> io::Result<String> {
+    let too_large = |what: String| io::Error::new(io::ErrorKind::InvalidData, what);
+    let mut bytes = Vec::new();
+    reader.take(MAX_ENTRY_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_ENTRY_BYTES {
+        return Err(too_large(format!(
+            "{name} is larger than {} MiB",
+            MAX_ENTRY_BYTES >> 20
+        )));
+    }
+    *total += bytes.len() as u64;
+    if *total > MAX_TOTAL_BYTES {
+        return Err(too_large(format!(
+            "snapshot is larger than {} MiB",
+            MAX_TOTAL_BYTES >> 20
+        )));
+    }
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
+}
+
+/// Reads only the snapshot layout, and only once `meta.toml` shows this is a snapshot, so a
+/// mistaken `--from ~/Downloads` fails fast instead of reading the whole tree. Symlinks are
+/// never followed.
 fn read_dir_entries(root: &Path) -> io::Result<BTreeMap<String, String>> {
-    fn walk(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) -> io::Result<()> {
+    fn walk(
+        dir: &Path,
+        prefix: &str,
+        out: &mut BTreeMap<String, String>,
+        total: &mut u64,
+    ) -> io::Result<()> {
         for entry in fs::read_dir(dir)? {
-            let path = entry?.path();
-            if path.is_dir() {
-                walk(root, &path, out)?;
-                continue;
+            let entry = entry?;
+            let kind = entry.file_type()?;
+            let name = format!("{prefix}/{}", entry.file_name().to_string_lossy());
+            if kind.is_dir() {
+                walk(&entry.path(), &name, out, total)?;
+            } else if kind.is_file() {
+                let text = read_capped(fs::File::open(entry.path())?, &name, total)?;
+                out.insert(name, text);
             }
-            let relative = path
-                .strip_prefix(root)
-                .expect("walked paths are under root");
-            let name = relative
-                .components()
-                .map(|c| c.as_os_str().to_string_lossy())
-                .collect::<Vec<_>>()
-                .join("/");
-            out.insert(
-                name,
-                String::from_utf8_lossy(&fs::read(&path)?).into_owned(),
-            );
         }
         Ok(())
     }
+    let is_file = |name: &str| fs::symlink_metadata(root.join(name)).is_ok_and(|m| m.is_file());
     let mut out = BTreeMap::new();
-    walk(root, root, &mut out)?;
+    let mut total = 0;
+    if !is_file("meta.toml") {
+        return Ok(out);
+    }
+    for name in ["meta.toml", "sysctl.toml"] {
+        if is_file(name) {
+            out.insert(
+                name.to_string(),
+                read_capped(fs::File::open(root.join(name))?, name, &mut total)?,
+            );
+        }
+    }
+    if fs::symlink_metadata(root.join("fs")).is_ok_and(|m| m.is_dir()) {
+        walk(&root.join("fs"), "fs", &mut out, &mut total)?;
+    }
     Ok(out)
 }
 
@@ -236,6 +283,7 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
     let decoder = flate2::read::GzDecoder::new(fs::File::open(path)?);
     let mut archive = tar::Archive::new(decoder);
     let mut out = BTreeMap::new();
+    let mut total = 0;
     for entry in archive.entries()? {
         let mut entry = entry?;
         if !entry.header().entry_type().is_file() {
@@ -246,9 +294,11 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
             .to_string_lossy()
             .trim_start_matches("./")
             .to_string();
-        let mut bytes = Vec::new();
-        entry.read_to_end(&mut bytes)?;
-        out.insert(name, String::from_utf8_lossy(&bytes).into_owned());
+        if !in_layout(&name) {
+            continue;
+        }
+        let text = read_capped(&mut entry, &name, &mut total)?;
+        out.insert(name, text);
     }
     Ok(out)
 }
@@ -342,6 +392,69 @@ mod tests {
                 .starts_with("cannot read snapshot /definitely/not/here"),
             "{err}"
         );
+    }
+
+    fn write_raw_tar_gz(path: &Path, entries: &[(&str, Vec<u8>)]) {
+        let file = fs::File::create(path).unwrap();
+        let mut archive = tar::Builder::new(flate2::write::GzEncoder::new(
+            file,
+            flate2::Compression::fast(),
+        ));
+        for (name, data) in entries {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(data.len() as u64);
+            header.set_mode(0o644);
+            archive
+                .append_data(&mut header, name, data.as_slice())
+                .unwrap();
+        }
+        archive.into_inner().unwrap().finish().unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_directory_without_meta_is_rejected_without_walking_it() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let secret = dir.path().join("unreadable");
+        fs::write(&secret, "x").unwrap();
+        fs::set_permissions(&secret, fs::Permissions::from_mode(0o000)).unwrap();
+        let err = Snapshot::open(dir.path()).unwrap_err();
+        assert!(matches!(err, SnapshotError::MissingMeta), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinks_inside_a_snapshot_are_not_followed() {
+        let dir = tempfile::tempdir().unwrap();
+        for (name, text) in sample().to_entries() {
+            let path = dir.path().join(name);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, text).unwrap();
+        }
+        std::os::unix::fs::symlink(".", dir.path().join("fs/loop")).unwrap();
+        assert_eq!(Snapshot::open(dir.path()).unwrap(), sample());
+    }
+
+    #[test]
+    fn oversized_entries_are_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("big.tar.gz");
+        let meta = sample().to_entries()["meta.toml"].clone().into_bytes();
+        let big = vec![b'x'; (MAX_ENTRY_BYTES + 1) as usize];
+        write_raw_tar_gz(&path, &[("meta.toml", meta), ("fs/proc/cpuinfo", big)]);
+        let err = Snapshot::open(&path).unwrap_err();
+        assert!(err.to_string().contains("larger than"), "{err}");
+    }
+
+    #[test]
+    fn entries_outside_the_layout_are_ignored_unread() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("extra.tar.gz");
+        let meta = sample().to_entries()["meta.toml"].clone().into_bytes();
+        let junk = vec![b'x'; (MAX_ENTRY_BYTES + 1) as usize];
+        write_raw_tar_gz(&path, &[("meta.toml", meta), ("junk.bin", junk)]);
+        assert!(Snapshot::open(&path).is_ok());
     }
 
     #[test]

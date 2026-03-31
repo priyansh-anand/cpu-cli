@@ -2,6 +2,7 @@
 
 pub mod features;
 mod macos;
+pub mod sysfs;
 
 use crate::model::Cpu;
 use crate::source::{Os, Sources};

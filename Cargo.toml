@@ -32,5 +32,5 @@ toml = "1.1"
 
 [dev-dependencies]
 insta = "1.48"
-jsonschema = "0.57"
+jsonschema = { version = "0.57", default-features = false }
 tempfile = "3.27"

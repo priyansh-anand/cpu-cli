@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub mod dump;
+pub mod files;
 pub mod snapshot;
 
 #[cfg(target_os = "macos")]

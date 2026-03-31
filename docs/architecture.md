@@ -2,14 +2,19 @@
 
 `cpu` is a pipeline of three layers with one shared data model in the middle.
 
-```
-            ┌────────────┐      ┌─────────────┐      ┌──────────────────────┐
- OS ───────►│  Sources   │─────►│ Collectors  │─────►│      Renderers       │──► stdout
- snapshot ─►│ (raw I/O)  │      │ (parse)     │      │ boxed · plain · json │
-            └────────────┘      └─────────────┘      └──────────────────────┘
-                                       │
-                                       ▼
-                                  model::Cpu
+```mermaid
+flowchart LR
+    live[("Live OS")] --> sources
+    snap[("Snapshot")] --> sources
+    sources["Sources<br/>raw I/O"] --> collectors["Collectors<br/>parse"]
+    collectors --> model["model::Cpu"]
+    model --> view["view::build<br/>sections"]
+    view --> boxed["boxed"]
+    view --> plain["plain"]
+    model --> json["json"]
+    boxed --> out(["stdout"])
+    plain --> out
+    json --> out
 ```
 
 The design goal is correctness across hardware the maintainers don't own. Every choice below serves one of two rules:
@@ -71,14 +76,18 @@ The box renderer is hand-written (about 100 lines) rather than using `comfy-tabl
 
 `render::choose` decides the output from the flags and a `Terminal` description (TTY, locale, `NO_COLOR`, `CLICOLOR_FORCE`):
 
-| Situation | Output |
-|---|---|
-| `--json` | JSON, always |
-| `--plain` | plain |
-| non-UTF-8 locale (`C`, `POSIX`, …) | plain |
-| stdout is a terminal | boxed, coloured unless `NO_COLOR` or `--color never` |
-| stdout is a pipe/file, `--color always` or `CLICOLOR_FORCE` | boxed, coloured |
-| stdout is a pipe/file, otherwise | plain |
+```mermaid
+flowchart TD
+    start(["cpu"]) --> json{"--json?"}
+    json -- yes --> J["JSON"]
+    json -- no --> plainflag{"--plain, or a<br/>non-UTF-8 locale?"}
+    plainflag -- yes --> P["plain"]
+    plainflag -- no --> where{"stdout is a terminal,<br/>or colour forced?"}
+    where -- no --> P
+    where -- yes --> B["boxed"]
+```
+
+Colour is *forced* by `--color always`, or by `CLICOLOR_FORCE` when `NO_COLOR` is unset. Boxed output is coloured unless `NO_COLOR` is set or `--color never` is given.
 
 Plain output is ASCII-only, so it is safe in logs, pipes and any locale. A closed pipe while writing is treated as success.
 

@@ -150,9 +150,15 @@ On a platform that isn't supported yet, `cpu` exits with status 1 and a message 
 
 ## How it works
 
-```
-Source ──► Collector ──► Renderer
-(raw OS reads)   (parse into one model)   (boxed / plain / json)
+```mermaid
+flowchart LR
+    live[("Live OS<br/>sysctl")] --> sources
+    snap[("Snapshot<br/>--from")] --> sources
+    sources["Sources<br/>raw reads"] --> collectors["Collectors<br/>parse + sanity checks"]
+    collectors --> model["model::Cpu"]
+    model --> boxed["boxed"]
+    model --> plain["plain"]
+    model --> json["json"]
 ```
 
 Sources are the only code that touches the operating system, and every source has a *recorded* twin that reads a snapshot. So the whole program, including its test suite, runs identically on a live machine and on a snapshot captured from someone else's hardware. See [docs/architecture.md](docs/architecture.md).

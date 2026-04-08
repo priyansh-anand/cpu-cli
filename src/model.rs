@@ -249,6 +249,9 @@ pub struct FeatureGroupEntry {
 pub struct Feature {
     pub raw: String,
     pub name: String,
+    /// Display family: members of one family are shown together, e.g. `AVX-512 (F/BW)`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
 }
 
 /// Declaration order is display order.

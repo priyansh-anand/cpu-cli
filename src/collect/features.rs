@@ -13,6 +13,7 @@ pub fn group(raw: Vec<String>) -> Features {
         let feature = Feature {
             raw: def.raw.to_string(),
             name: def.name.to_string(),
+            family: def.family.map(str::to_string),
         };
         match groups.iter_mut().find(|g| g.group == def.group) {
             Some(entry) => entry.features.push(feature),
@@ -69,5 +70,40 @@ mod tests {
     #[test]
     fn no_flags_means_nothing_to_show() {
         assert!(group(Vec::new()).is_empty());
+    }
+
+    #[test]
+    fn linux_flags_group_and_carry_their_family() {
+        let f = group(vec![
+            "avx512bw".into(),
+            "avx2".into(),
+            "avx512f".into(),
+            "aes".into(),
+            "vmx".into(),
+        ]);
+        let simd = &f.groups[0];
+        assert_eq!(simd.group, FeatureGroup::Simd);
+        let shown: Vec<(&str, Option<&str>)> = simd
+            .features
+            .iter()
+            .map(|x| (x.name.as_str(), x.family.as_deref()))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                ("AVX2", None),
+                ("F", Some("AVX-512")),
+                ("BW", Some("AVX-512"))
+            ]
+        );
+        let groups: Vec<FeatureGroup> = f.groups.iter().map(|g| g.group).collect();
+        assert_eq!(
+            groups,
+            [
+                FeatureGroup::Simd,
+                FeatureGroup::Crypto,
+                FeatureGroup::Virtualization
+            ]
+        );
     }
 }

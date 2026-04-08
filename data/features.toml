@@ -5,6 +5,11 @@
 # the table stays a curated summary instead of a dump. Entries are shown in file order.
 #
 # group: simd | crypto | virtualization | security | other
+# family: optional. Consecutive members of a family display as one item, e.g. AVX-512 (F/BW/VL).
+#
+# Raw keys are shared across operating systems and architectures, so a key must mean the same
+# thing everywhere. AMD's "sme" (Secure Memory Encryption) is deliberately absent because ARM's
+# "sme" is the Scalable Matrix Extension.
 
 # --- macOS on Apple Silicon: hw.optional.arm.* ---
 
@@ -163,3 +168,336 @@ raw = "FEAT_LSE2"
 name = "LSE2"
 group = "other"
 desc = "Relaxed alignment for atomic loads and stores"
+
+# --- Linux on ARM: /proc/cpuinfo "Features" ---
+
+[[feature]]
+raw = "asimd"
+name = "NEON"
+group = "simd"
+desc = "Advanced SIMD: 128-bit vector instructions"
+
+[[feature]]
+raw = "asimdhp"
+name = "FP16"
+group = "simd"
+desc = "Half-precision floating-point arithmetic"
+
+[[feature]]
+raw = "bf16"
+name = "BF16"
+group = "simd"
+desc = "BFloat16 arithmetic for machine learning"
+
+[[feature]]
+raw = "i8mm"
+name = "I8MM"
+group = "simd"
+desc = "Int8 matrix multiply"
+
+[[feature]]
+raw = "asimddp"
+name = "DotProd"
+group = "simd"
+desc = "Int8 dot-product instructions"
+
+[[feature]]
+raw = "asimdfhm"
+name = "FHM"
+group = "simd"
+desc = "Half-precision multiply-accumulate into single precision"
+
+[[feature]]
+raw = "sve"
+name = "SVE"
+group = "simd"
+desc = "Scalable Vector Extension"
+
+[[feature]]
+raw = "sve2"
+name = "SVE2"
+group = "simd"
+desc = "Scalable Vector Extension version 2"
+
+[[feature]]
+raw = "sme"
+name = "SME"
+group = "simd"
+desc = "Scalable Matrix Extension"
+
+[[feature]]
+raw = "sme2"
+name = "SME2"
+group = "simd"
+desc = "Scalable Matrix Extension version 2"
+
+[[feature]]
+raw = "aes"
+name = "AES"
+group = "crypto"
+desc = "AES encryption instructions (ARM and x86)"
+
+[[feature]]
+raw = "pmull"
+name = "PMULL"
+group = "crypto"
+desc = "Polynomial multiply, used by AES-GCM"
+
+[[feature]]
+raw = "sha1"
+name = "SHA1"
+group = "crypto"
+desc = "SHA-1 hash instructions"
+
+[[feature]]
+raw = "sha2"
+name = "SHA256"
+group = "crypto"
+desc = "SHA-256 hash instructions"
+
+[[feature]]
+raw = "sha512"
+name = "SHA512"
+group = "crypto"
+desc = "SHA-512 hash instructions"
+
+[[feature]]
+raw = "sha3"
+name = "SHA3"
+group = "crypto"
+desc = "SHA-3 hash instructions"
+
+[[feature]]
+raw = "crc32"
+name = "CRC32"
+group = "crypto"
+desc = "CRC32 checksum instructions"
+
+[[feature]]
+raw = "paca"
+name = "PAC"
+group = "security"
+desc = "Pointer authentication (signed return addresses)"
+
+[[feature]]
+raw = "bti"
+name = "BTI"
+group = "security"
+desc = "Branch target identification"
+
+[[feature]]
+raw = "mte"
+name = "MTE"
+group = "security"
+desc = "Memory tagging extension"
+
+[[feature]]
+raw = "ssbs"
+name = "SSBS"
+group = "security"
+desc = "Speculative store bypass safe"
+
+[[feature]]
+raw = "dit"
+name = "DIT"
+group = "security"
+desc = "Data-independent timing for constant-time code"
+
+[[feature]]
+raw = "sb"
+name = "SB"
+group = "security"
+desc = "Speculation barrier instruction"
+
+[[feature]]
+raw = "atomics"
+name = "LSE"
+group = "other"
+desc = "Large System Extensions: atomic read-modify-write instructions"
+
+[[feature]]
+raw = "uscat"
+name = "LSE2"
+group = "other"
+desc = "Relaxed alignment for atomic loads and stores"
+
+# --- Linux on x86: /proc/cpuinfo "flags" ---
+
+[[feature]]
+raw = "sse4_2"
+name = "SSE4.2"
+group = "simd"
+desc = "Streaming SIMD Extensions 4.2"
+
+[[feature]]
+raw = "avx"
+name = "AVX"
+group = "simd"
+desc = "256-bit Advanced Vector Extensions"
+
+[[feature]]
+raw = "avx2"
+name = "AVX2"
+group = "simd"
+desc = "256-bit integer vector instructions"
+
+[[feature]]
+raw = "fma"
+name = "FMA"
+group = "simd"
+desc = "Fused multiply-add"
+
+[[feature]]
+raw = "avx_vnni"
+name = "AVX-VNNI"
+group = "simd"
+desc = "Vector neural-network instructions on 256-bit registers"
+
+[[feature]]
+raw = "avx512f"
+family = "AVX-512"
+name = "F"
+group = "simd"
+desc = "AVX-512 foundation"
+
+[[feature]]
+raw = "avx512cd"
+family = "AVX-512"
+name = "CD"
+group = "simd"
+desc = "AVX-512 conflict detection"
+
+[[feature]]
+raw = "avx512bw"
+family = "AVX-512"
+name = "BW"
+group = "simd"
+desc = "AVX-512 byte and word instructions"
+
+[[feature]]
+raw = "avx512dq"
+family = "AVX-512"
+name = "DQ"
+group = "simd"
+desc = "AVX-512 doubleword and quadword instructions"
+
+[[feature]]
+raw = "avx512vl"
+family = "AVX-512"
+name = "VL"
+group = "simd"
+desc = "AVX-512 on 128- and 256-bit registers"
+
+[[feature]]
+raw = "avx512_vnni"
+family = "AVX-512"
+name = "VNNI"
+group = "simd"
+desc = "AVX-512 vector neural-network instructions"
+
+[[feature]]
+raw = "avx512_bf16"
+family = "AVX-512"
+name = "BF16"
+group = "simd"
+desc = "AVX-512 BFloat16 instructions"
+
+[[feature]]
+raw = "avx512_fp16"
+family = "AVX-512"
+name = "FP16"
+group = "simd"
+desc = "AVX-512 half-precision instructions"
+
+[[feature]]
+raw = "amx_tile"
+family = "AMX"
+name = "TILE"
+group = "simd"
+desc = "Advanced Matrix Extensions tile registers"
+
+[[feature]]
+raw = "amx_bf16"
+family = "AMX"
+name = "BF16"
+group = "simd"
+desc = "Advanced Matrix Extensions BFloat16"
+
+[[feature]]
+raw = "amx_int8"
+family = "AMX"
+name = "INT8"
+group = "simd"
+desc = "Advanced Matrix Extensions int8"
+
+[[feature]]
+raw = "pclmulqdq"
+name = "PCLMUL"
+group = "crypto"
+desc = "Carry-less multiply, used by AES-GCM"
+
+[[feature]]
+raw = "vaes"
+name = "VAES"
+group = "crypto"
+desc = "Vector AES"
+
+[[feature]]
+raw = "vpclmulqdq"
+name = "VPCLMUL"
+group = "crypto"
+desc = "Vector carry-less multiply"
+
+[[feature]]
+raw = "sha_ni"
+name = "SHA-NI"
+group = "crypto"
+desc = "SHA-1 and SHA-256 instructions"
+
+[[feature]]
+raw = "rdrand"
+name = "RDRAND"
+group = "crypto"
+desc = "Hardware random number generator"
+
+[[feature]]
+raw = "rdseed"
+name = "RDSEED"
+group = "crypto"
+desc = "Hardware entropy source"
+
+[[feature]]
+raw = "vmx"
+name = "VT-x"
+group = "virtualization"
+desc = "Intel hardware virtualization"
+
+[[feature]]
+raw = "svm"
+name = "AMD-V"
+group = "virtualization"
+desc = "AMD hardware virtualization"
+
+[[feature]]
+raw = "ibt"
+name = "IBT"
+group = "security"
+desc = "Indirect branch tracking"
+
+[[feature]]
+raw = "user_shstk"
+name = "CET-SS"
+group = "security"
+desc = "Shadow stacks for user space"
+
+[[feature]]
+raw = "smep"
+name = "SMEP"
+group = "security"
+desc = "Supervisor mode execution prevention"
+
+[[feature]]
+raw = "smap"
+name = "SMAP"
+group = "security"
+desc = "Supervisor mode access prevention"

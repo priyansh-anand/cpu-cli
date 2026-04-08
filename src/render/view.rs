@@ -282,8 +282,26 @@ fn features(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
         .groups
         .iter()
         .map(|entry| {
-            let names: Vec<&str> = entry.features.iter().map(|f| f.name.as_str()).collect();
-            (entry.group.label(), Some(wrap(&names, g.sep, WRAP_WIDTH)))
+            // Members of one family collapse into a single item at the first member's position.
+            let mut items: Vec<(Option<&str>, Vec<&str>)> = Vec::new();
+            for f in &entry.features {
+                match f.family.as_deref() {
+                    Some(family) => match items.iter_mut().find(|(fam, _)| *fam == Some(family)) {
+                        Some((_, members)) => members.push(&f.name),
+                        None => items.push((Some(family), vec![&f.name])),
+                    },
+                    None => items.push((None, vec![&f.name])),
+                }
+            }
+            let names: Vec<String> = items
+                .into_iter()
+                .map(|(family, members)| match family {
+                    Some(family) => format!("{family} ({})", members.join("/")),
+                    None => members.join("/"),
+                })
+                .collect();
+            let refs: Vec<&str> = names.iter().map(String::as_str).collect();
+            (entry.group.label(), Some(wrap(&refs, g.sep, WRAP_WIDTH)))
         })
         .collect();
     pairs("Features", rows)
@@ -385,5 +403,29 @@ mod tests {
         assert_eq!(wrap(&["a", "b", "c"], " · ", 5), ["a · b", "c"]);
         assert_eq!(wrap(&["abcdefgh"], ", ", 3), ["abcdefgh"]);
         assert!(wrap(&[], ", ", 10).is_empty());
+    }
+
+    #[test]
+    fn feature_families_collapse_into_one_item() {
+        use crate::model::{Feature, FeatureGroup, FeatureGroupEntry};
+        let feature = |raw: &str, name: &str, family: Option<&str>| Feature {
+            raw: raw.into(),
+            name: name.into(),
+            family: family.map(str::to_string),
+        };
+        let mut cpu = Cpu::default();
+        cpu.features.groups = vec![FeatureGroupEntry {
+            group: FeatureGroup::Simd,
+            features: vec![
+                feature("avx2", "AVX2", None),
+                feature("avx512f", "F", Some("AVX-512")),
+                feature("avx512bw", "BW", Some("AVX-512")),
+                feature("amx_tile", "TILE", Some("AMX")),
+            ],
+        }];
+        assert_eq!(
+            row(&build(&cpu, &UNICODE), "SIMD").lines,
+            ["AVX2 · AVX-512 (F/BW) · AMX (TILE)"]
+        );
     }
 }

@@ -5,6 +5,8 @@ use crate::model::FeatureGroup;
 pub struct FeatureDef {
     pub raw: &'static str,
     pub name: &'static str,
+    /// Display family, e.g. `AVX-512` for `avx512f`.
+    pub family: Option<&'static str>,
     pub group: FeatureGroup,
     pub desc: &'static str,
 }

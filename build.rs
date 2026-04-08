@@ -23,6 +23,7 @@ struct FeatureFile {
 struct FeatureEntry {
     raw: String,
     name: String,
+    family: Option<String>,
     group: String,
     desc: String,
 }
@@ -64,9 +65,16 @@ fn features(out_dir: &Path) {
                     e.raw, e.group
                 )
             });
+        if let Some(family) = &e.family {
+            assert!(
+                !family.is_empty(),
+                "data/features.toml: {:?} has an empty family",
+                e.raw
+            );
+        }
         out.push_str(&format!(
-            "    FeatureDef {{ raw: {:?}, name: {:?}, group: FeatureGroup::{variant}, desc: {:?} }},\n",
-            e.raw, e.name, e.desc
+            "    FeatureDef {{ raw: {:?}, name: {:?}, family: {:?}, group: FeatureGroup::{variant}, desc: {:?} }},\n",
+            e.raw, e.name, e.family, e.desc
         ));
     }
     out.push_str("];\n");

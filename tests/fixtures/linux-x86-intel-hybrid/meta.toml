@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "linux"
+arch = "x86_64"
+kernel = "6.8.0"
+created_unix = 1790208000
+note = "SYNTHETIC: 12th-gen Intel desktop layout (8 P-cores with SMT, 4 E-cores), not captured from hardware"

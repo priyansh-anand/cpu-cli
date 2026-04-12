@@ -1,0 +1,240 @@
+processor	: 0
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 0
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 1
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 0
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 2
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 4
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 3
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 4
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 4
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 8
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 5
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 8
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 6
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 12
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 7
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 12
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 8
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 16
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 9
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 16
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 10
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 20
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 11
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 20
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 12
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 24
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 13
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 24
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 14
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 28
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 15
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 28
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 16
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 32
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 17
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 33
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 18
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 34
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+
+processor	: 19
+vendor_id	: GenuineIntel
+cpu family	: 6
+model	: 151
+model name	: 12th Gen Intel(R) Core(TM) i7-12700K
+stepping	: 2
+microcode	: 0x2f
+cpu MHz	: 3600.000
+physical id	: 0
+core id	: 35
+flags	: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc rep_good nopl xtopology cpuid pni pclmulqdq ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm abm bmi1 avx2 smep bmi2 erms rdseed adx smap clflushopt sha_ni xsaveopt xsavec xgetbv1 xsaves vaes vpclmulqdq avx_vnni vmx ibt user_shstk
+

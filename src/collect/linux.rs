@@ -1,13 +1,18 @@
 //! Linux collector: `/proc/cpuinfo`, `/sys/devices/system/{cpu,node}` and two DMI strings.
 //! Compiled on every OS, so Linux fixtures are tested on any machine.
 
+use std::cmp::Reverse;
 use std::collections::{BTreeMap, BTreeSet};
 
-use super::sysfs::{parse_cpu_list, parse_cpuinfo};
-use super::{count, features, ratio};
+use super::sysfs::{parse_cpu_list, parse_cpuinfo, parse_size};
+use super::{count, features, plausible_cache_size, ratio};
 use crate::db;
-use crate::model::{Cpu, Diagnostic, F, Fact, Identity, NumaNode, Origin, Topology};
+use crate::model::{
+    Cache, CacheKind, Clocks, Cluster, CoreKind, Cpu, Diagnostic, F, Fact, Identity, NumaNode,
+    Origin, Topology,
+};
 use crate::source::Fs;
+use crate::units::{Bytes, Hertz};
 
 const CPU_DIR: &str = "/sys/devices/system/cpu";
 const NODE_DIR: &str = "/sys/devices/system/node";
@@ -46,12 +51,13 @@ pub fn collect(fs: &dyn Fs) -> Cpu {
     let topo = cpu_topology(&mut r, &cpus);
     let identity = identity(&mut r, &info);
     let topology = topology(&mut r, &cpus, &topo);
+    let (clusters, shared_caches) = clusters(&mut r, &cpus, &info, &topo);
     let features = features::group(flags(&info));
     Cpu {
         identity,
         topology,
-        clusters: Vec::new(),
-        shared_caches: Vec::new(),
+        clusters,
+        shared_caches,
         features,
         diagnostics: r.diagnostics,
     }
@@ -97,6 +103,17 @@ impl Reader<'_> {
             Some(list) => Some(list),
             None => {
                 self.reject(path, "not a CPU list");
+                None
+            }
+        }
+    }
+
+    fn size(&mut self, path: &str) -> F<Bytes> {
+        let text = self.text(path)?;
+        match parse_size(&text).filter(|n| plausible_cache_size(*n)) {
+            Some(n) => Some(Fact::detected(Bytes(n), path)),
+            None => {
+                self.reject(path, "implausible cache size");
                 None
             }
         }
@@ -362,6 +379,258 @@ fn flags(info: &[Block]) -> Vec<String> {
     flags
 }
 
+/// One core type's CPUs, before they become a [`Cluster`].
+struct Group {
+    kind: CoreKind,
+    name: F<String>,
+    cpus: Vec<u32>,
+}
+
+fn clusters(
+    r: &mut Reader,
+    cpus: &[u32],
+    info: &[Block],
+    topo: &BTreeMap<u32, CpuTopo>,
+) -> (Vec<Cluster>, Vec<Cache>) {
+    if cpus.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
+    let groups = groups(r, cpus, info);
+    let (caches, shared) = place(cache_instances(r, cpus), &groups);
+    let clusters = groups
+        .into_iter()
+        .zip(caches)
+        .map(|(group, caches)| {
+            let complete = group
+                .cpus
+                .iter()
+                .all(|c| topo.get(c).is_some_and(|t| t.siblings.is_some()));
+            let cores: BTreeSet<&Vec<u32>> = group
+                .cpus
+                .iter()
+                .filter_map(|c| topo.get(c)?.siblings.as_ref())
+                .collect();
+            Cluster {
+                kind: group.kind,
+                name: group.name,
+                cores: if complete { count(cores.len()) } else { None },
+                threads: count(group.cpus.len()),
+                clock: clocks(r, &group.cpus),
+                caches,
+            }
+        })
+        .collect();
+    (clusters, shared)
+}
+
+fn pmu_cpus(r: &mut Reader, pmu: &str, online: &BTreeSet<u32>) -> Vec<u32> {
+    r.cpu_list(&format!("/sys/devices/{pmu}/cpus"))
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|c| online.contains(c))
+        .collect()
+}
+
+fn groups(r: &mut Reader, cpus: &[u32], info: &[Block]) -> Vec<Group> {
+    let online: BTreeSet<u32> = cpus.iter().copied().collect();
+    // Intel hybrid: the kernel lists each core type's CPUs under its PMU.
+    let (performance, efficiency) = (
+        pmu_cpus(r, "cpu_core", &online),
+        pmu_cpus(r, "cpu_atom", &online),
+    );
+    if !performance.is_empty() && !efficiency.is_empty() {
+        return vec![
+            Group {
+                kind: CoreKind::Performance,
+                name: None,
+                cpus: performance,
+            },
+            Group {
+                kind: CoreKind::Efficiency,
+                name: None,
+                cpus: efficiency,
+            },
+        ];
+    }
+    // ARM big.LITTLE: one group per (capacity, core part), highest capacity first.
+    let implementer = info
+        .first()
+        .and_then(|b| b.get("CPU implementer"))
+        .and_then(|v| parse_hex(v));
+    let mut by_type: BTreeMap<(Reverse<u32>, u32), Vec<u32>> = BTreeMap::new();
+    for &cpu in cpus {
+        let capacity = r
+            .number::<u32>(&format!("{CPU_DIR}/cpu{cpu}/cpu_capacity"))
+            .unwrap_or(0);
+        let part = block_for(info, cpu)
+            .and_then(|b| b.get("CPU part"))
+            .and_then(|p| parse_hex(p))
+            .unwrap_or(0);
+        by_type
+            .entry((Reverse(capacity), part))
+            .or_default()
+            .push(cpu);
+    }
+    if by_type.len() <= 1 {
+        return vec![Group {
+            kind: CoreKind::Uniform,
+            name: None,
+            cpus: cpus.to_vec(),
+        }];
+    }
+    let last = by_type.len() - 1;
+    by_type
+        .into_iter()
+        .enumerate()
+        .map(|(i, ((_, part), cpus))| Group {
+            kind: if i == last {
+                CoreKind::Efficiency
+            } else {
+                CoreKind::Performance
+            },
+            name: implementer
+                .and_then(|imp| db::arm_part(imp, part))
+                .map(database),
+            cpus,
+        })
+        .collect()
+}
+
+fn block_for(info: &[Block], cpu: u32) -> Option<&Block> {
+    info.iter()
+        .find(|b| b.get("processor").and_then(|p| p.parse::<u32>().ok()) == Some(cpu))
+}
+
+/// One cache instance: a level and type, and the online CPUs sharing it.
+struct Instance {
+    level: u8,
+    kind: CacheKind,
+    size: F<Bytes>,
+    cpus: Vec<u32>,
+}
+
+fn cache_instances(r: &mut Reader, cpus: &[u32]) -> Vec<Instance> {
+    let online: BTreeSet<u32> = cpus.iter().copied().collect();
+    let mut seen = BTreeSet::new();
+    let mut out = Vec::new();
+    for &cpu in cpus {
+        let dir = format!("{CPU_DIR}/cpu{cpu}/cache");
+        for index in
+            r.fs.list(&dir)
+                .into_iter()
+                .filter(|n| n.starts_with("index"))
+        {
+            let base = format!("{dir}/{index}");
+            let Some(level) = r
+                .number::<u8>(&format!("{base}/level"))
+                .filter(|l| (1..=4).contains(l))
+            else {
+                continue;
+            };
+            let kind = match r.text(&format!("{base}/type")).as_deref() {
+                Some("Data") => CacheKind::Data,
+                Some("Instruction") => CacheKind::Instruction,
+                Some("Unified") => CacheKind::Unified,
+                _ => continue,
+            };
+            // Only online CPUs share anything; offline ones would skew the counts.
+            let mut sharers: Vec<u32> = r
+                .cpu_list(&format!("{base}/shared_cpu_list"))
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|c| online.contains(c))
+                .collect();
+            if sharers.is_empty() {
+                sharers.push(cpu);
+            }
+            if !seen.insert((level, kind, sharers.clone())) {
+                continue;
+            }
+            let size = r.size(&format!("{base}/size"));
+            out.push(Instance {
+                level,
+                kind,
+                size,
+                cpus: sharers,
+            });
+        }
+    }
+    out
+}
+
+type Buckets = BTreeMap<(u8, CacheKind), Vec<Instance>>;
+
+/// Gives each cache instance to the group owning all its CPUs. An instance whose CPUs span
+/// several groups (an Intel hybrid L3) becomes a shared cache.
+fn place(instances: Vec<Instance>, groups: &[Group]) -> (Vec<Vec<Cache>>, Vec<Cache>) {
+    let mut per_group: Vec<Buckets> = groups.iter().map(|_| Buckets::new()).collect();
+    let mut shared = Buckets::new();
+    for instance in instances {
+        let owners: BTreeSet<usize> = instance
+            .cpus
+            .iter()
+            .filter_map(|c| groups.iter().position(|g| g.cpus.contains(c)))
+            .collect();
+        let bucket = match (owners.len(), owners.first()) {
+            (1, Some(&i)) => &mut per_group[i],
+            _ => &mut shared,
+        };
+        bucket
+            .entry((instance.level, instance.kind))
+            .or_default()
+            .push(instance);
+    }
+    (
+        per_group.into_iter().map(summarize).collect(),
+        summarize(shared),
+    )
+}
+
+fn summarize(buckets: Buckets) -> Vec<Cache> {
+    buckets
+        .into_iter()
+        .map(|((level, kind), instances)| {
+            let first = &instances[0];
+            Cache {
+                level,
+                kind,
+                size: first.size.clone(),
+                shared_by: count(first.cpus.len()),
+                instances: count(instances.len()),
+            }
+        })
+        .collect()
+}
+
+/// A cpufreq value (kHz on disk) as hertz. Values outside 100 MHz to 10 GHz are rejected.
+fn frequency(r: &mut Reader, cpu: u32, file: &str) -> F<Hertz> {
+    let path = format!("{CPU_DIR}/cpu{cpu}/cpufreq/{file}");
+    let khz: u64 = r.number(&path)?;
+    let hz = khz.saturating_mul(1000);
+    if !(100_000_000..=10_000_000_000).contains(&hz) {
+        r.reject(&path, "implausible frequency");
+        return None;
+    }
+    Some(Fact::detected(Hertz(hz), path))
+}
+
+/// Base and max clocks. Current frequency is deliberately not collected: it changes every
+/// moment, so it is monitoring rather than a fact, and a dump could never replay it.
+fn clocks(r: &mut Reader, cpus: &[u32]) -> Clocks {
+    let Some(&first) = cpus.first() else {
+        return Clocks::default();
+    };
+    let max = cpus
+        .iter()
+        .filter_map(|&c| frequency(r, c, "cpuinfo_max_freq"))
+        .max_by_key(|f| f.value);
+    Clocks {
+        base: frequency(r, first, "base_frequency"),
+        max,
+        current: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -617,5 +886,224 @@ mod tests {
         let cpu = collect(&files(&[("/sys/devices/system/cpu/online", "0-7")]));
         assert_eq!(value(&cpu.topology.logical_cpus), Some(8));
         assert!(cpu.is_identified());
+    }
+
+    use crate::model::{CacheKind, CoreKind};
+    use crate::units::{Bytes, Hertz};
+
+    fn cache(
+        cluster: &crate::model::Cluster,
+        level: u8,
+        kind: CacheKind,
+    ) -> (Option<Bytes>, Option<u32>, Option<u32>) {
+        let k = cluster
+            .caches
+            .iter()
+            .find(|k| k.level == level && k.kind == kind)
+            .expect("cache present");
+        (value(&k.size), value(&k.shared_by), value(&k.instances))
+    }
+
+    #[test]
+    fn intel_hybrid_has_two_core_types_and_a_shared_l3() {
+        let cpu = fixture("linux-x86-intel-hybrid");
+        let c = &cpu.clusters;
+        assert_eq!(c.len(), 2);
+        assert_eq!(
+            (c[0].kind, value(&c[0].cores), value(&c[0].threads)),
+            (CoreKind::Performance, Some(8), Some(16))
+        );
+        assert_eq!(
+            (c[1].kind, value(&c[1].cores), value(&c[1].threads)),
+            (CoreKind::Efficiency, Some(4), Some(4))
+        );
+        assert_eq!(
+            cache(&c[0], 2, CacheKind::Unified),
+            (Some(Bytes(1280 << 10)), Some(2), Some(8))
+        );
+        assert_eq!(
+            cache(&c[1], 2, CacheKind::Unified),
+            (Some(Bytes(2 << 20)), Some(4), Some(1))
+        );
+        assert!(
+            c.iter().all(|cl| cl.caches.iter().all(|k| k.level != 3)),
+            "L3 spans both types"
+        );
+        let l3 = &cpu.shared_caches;
+        assert_eq!(l3.len(), 1);
+        assert_eq!(
+            (
+                l3[0].level,
+                value(&l3[0].size),
+                value(&l3[0].shared_by),
+                value(&l3[0].instances)
+            ),
+            (3, Some(Bytes(25 << 20)), Some(20), Some(1))
+        );
+    }
+
+    #[test]
+    fn intel_clocks_per_core_type() {
+        let c = fixture("linux-x86-intel-hybrid").clusters;
+        assert_eq!(
+            (value(&c[0].clock.base), value(&c[0].clock.max)),
+            (Some(Hertz(3_600_000_000)), Some(Hertz(5_000_000_000)))
+        );
+        assert_eq!(
+            (value(&c[1].clock.base), value(&c[1].clock.max)),
+            (Some(Hertz(2_700_000_000)), Some(Hertz(3_800_000_000)))
+        );
+        assert_eq!(
+            c[0].clock.current, None,
+            "current frequency is not a static fact"
+        );
+    }
+
+    #[test]
+    fn gce_is_uniform_with_one_l3_per_node() {
+        let cpu = fixture("linux-x86-amd-gce");
+        assert_eq!(cpu.clusters.len(), 1);
+        assert_eq!(cpu.clusters[0].kind, CoreKind::Uniform);
+        assert_eq!(
+            cache(&cpu.clusters[0], 3, CacheKind::Unified),
+            (Some(Bytes(16 << 20)), Some(8), Some(2))
+        );
+        assert!(cpu.shared_caches.is_empty());
+        assert!(
+            cpu.clusters[0].clock.is_empty(),
+            "the VM exposes no cpufreq"
+        );
+    }
+
+    #[test]
+    fn arm_big_little_splits_by_capacity_and_part() {
+        let block = |n: u32, part: &str| {
+            format!(
+                "processor\t: {n}\nFeatures\t: fp asimd\nCPU implementer\t: 0x41\nCPU architecture: 8\nCPU part\t: {part}\n\n"
+            )
+        };
+        let mut map = files(&[("/sys/devices/system/cpu/online", "0-7")]);
+        let cpuinfo: String = (0..8)
+            .map(|n| block(n, if n < 4 { "0xd0b" } else { "0xd05" }))
+            .collect();
+        map.insert("/proc/cpuinfo".into(), cpuinfo);
+        for cpu in 0..8u32 {
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cpu_capacity"),
+                if cpu < 4 { "1024" } else { "446" }.into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"),
+                cpu.to_string(),
+            );
+        }
+        let c = collect(&map).clusters;
+        let shown: Vec<(CoreKind, Option<String>, Option<u32>)> = c
+            .iter()
+            .map(|cl| (cl.kind, value(&cl.name), value(&cl.cores)))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                (
+                    CoreKind::Performance,
+                    Some("Cortex-A76".to_string()),
+                    Some(4)
+                ),
+                (
+                    CoreKind::Efficiency,
+                    Some("Cortex-A55".to_string()),
+                    Some(4)
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn caches_without_a_size_keep_their_sharing() {
+        let mut map = arm("0x61", "0x000", &[]);
+        for cpu in 0..4 {
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/level"),
+                "2".into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/type"),
+                "Unified".into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/shared_cpu_list"),
+                "0-3".into(),
+            );
+        }
+        let cpu = collect(&map);
+        assert_eq!(
+            cache(&cpu.clusters[0], 2, CacheKind::Unified),
+            (None, Some(4), Some(1))
+        );
+        assert!(
+            cpu.diagnostics.is_empty(),
+            "a missing size is not an error: {:?}",
+            cpu.diagnostics
+        );
+    }
+
+    #[test]
+    fn offline_cpus_do_not_count_as_sharers() {
+        let mut map = arm(
+            "0x41",
+            "0xd0c",
+            &[("/sys/devices/system/cpu/online", "0-2")],
+        );
+        for cpu in 0..3 {
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/level"),
+                "2".into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/type"),
+                "Unified".into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/size"),
+                "1024K".into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0/shared_cpu_list"),
+                "0-3".into(),
+            );
+        }
+        let cpu = collect(&map);
+        assert_eq!(value(&cpu.clusters[0].threads), Some(3));
+        assert_eq!(
+            cache(&cpu.clusters[0], 2, CacheKind::Unified),
+            (Some(Bytes(1 << 20)), Some(3), Some(1))
+        );
+    }
+
+    #[test]
+    fn implausible_frequencies_are_rejected() {
+        let map = arm(
+            "0x41",
+            "0xd0c",
+            &[
+                ("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "1"),
+                (
+                    "/sys/devices/system/cpu/cpu0/cpufreq/base_frequency",
+                    "999999999999",
+                ),
+            ],
+        );
+        let cpu = collect(&map);
+        assert!(cpu.clusters[0].clock.is_empty());
+        let from: Vec<&str> = cpu.diagnostics.iter().map(|d| d.from.as_str()).collect();
+        assert!(
+            from.contains(&"/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq"),
+            "{from:?}"
+        );
+        assert!(
+            from.contains(&"/sys/devices/system/cpu/cpu0/cpufreq/base_frequency"),
+            "{from:?}"
+        );
     }
 }

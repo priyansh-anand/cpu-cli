@@ -7,11 +7,10 @@ use crate::model::{
 use crate::source::Sysctl;
 use crate::units::Bytes;
 
-use super::features;
+use super::{features, plausible_cache_size, ratio};
 
 /// More perflevels than this is garbage, not a real chip.
 const MAX_PERFLEVELS: u32 = 8;
-const MAX_CACHE_BYTES: u64 = 1 << 30;
 
 pub fn collect(sys: &dyn Sysctl) -> Cpu {
     let mut r = Reader {
@@ -99,11 +98,6 @@ impl Reader<'_> {
 
 fn source(key: &str) -> String {
     format!("sysctl:{key}")
-}
-
-/// Real caches are whole KiB and far below 1 GiB. Not "power of two": the M5's efficiency L2 is 6 MiB.
-fn plausible_cache_size(bytes: u64) -> bool {
-    bytes > 0 && bytes % 1024 == 0 && bytes <= MAX_CACHE_BYTES
 }
 
 fn identity(r: &mut Reader) -> Identity {
@@ -203,16 +197,6 @@ fn perflevel(r: &mut Reader, index: u32, levels: u32) -> Cluster {
         threads,
         clock: Clocks::default(),
         caches,
-    }
-}
-
-/// `a / b` as a derived fact, when both are known and divide evenly.
-fn ratio(a: &F<u32>, b: &F<u32>) -> F<u32> {
-    match (a, b) {
-        (Some(a), Some(b)) if b.value > 0 && a.value % b.value == 0 => {
-            Some(Fact::derived(a.value / b.value))
-        }
-        _ => None,
     }
 }
 

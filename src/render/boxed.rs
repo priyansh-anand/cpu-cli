@@ -43,10 +43,26 @@ fn label_width(pairs: &[Pair]) -> usize {
 }
 
 /// Column widths for a grid; the first column is widened so the title fits in its top border.
+/// Column widths for a grid: the first column fits the title in its top border, and the last
+/// column grows until every spanning row's text fits.
 fn grid_widths(title: &str, grid: &Grid) -> Vec<usize> {
     let mut widths = column_widths(&grid.table());
     widths[0] = widths[0].max(width(title) + 1);
+    for row in grid.rows.iter().filter(|r| r.span) {
+        widths[0] = widths[0].max(width(&row.label));
+        let text = row.cells.first().map_or(0, |c| width(c));
+        let available = span_width(&widths);
+        if text > available {
+            let last = widths.len() - 1;
+            widths[last] += text - available;
+        }
+    }
     widths
+}
+
+/// Text width of a cell spanning every column after the first, including the separators it covers.
+fn span_width(widths: &[usize]) -> usize {
+    widths[1..].iter().sum::<usize>() + 3 * (widths.len() - 2)
 }
 
 fn grid_inner(widths: &[usize]) -> usize {
@@ -91,37 +107,46 @@ fn draw_grid(out: &mut String, title: &str, grid: &Grid, inner: usize, paint: Pa
     let last = w.len() - 1;
     w[last] += inner - grid_inner(&w);
     let seg = |i: usize| "─".repeat(w[i] + 2);
-    let rest: String = (1..w.len()).map(|i| format!("┬{}", seg(i))).collect();
-    let dashes = "─".repeat(w[0] - width(title));
-    out.push_str(&format!(
-        "╭ {} {dashes}{rest}╮\n",
-        paint.cell(title, 0, TITLE)
-    ));
-    for (r, cells) in grid.table().iter().enumerate() {
-        let line: Vec<String> = cells
+    let border = |join: &str| (0..w.len()).map(seg).collect::<Vec<_>>().join(join);
+    let line = |cells: &[&str], header: bool| {
+        cells
             .iter()
             .enumerate()
             .map(|(i, c)| {
-                let style = if i == 0 || r == 0 {
+                let style = if i == 0 || header {
                     LABEL
                 } else {
                     Style::new()
                 };
                 format!(" {} ", paint.cell(c, w[i], style))
             })
-            .collect();
-        out.push_str(&format!("│{}│\n", line.join("│")));
-        if r == 0 {
+            .collect::<Vec<_>>()
+            .join("│")
+    };
+    let rest: String = (1..w.len()).map(|i| format!("┬{}", seg(i))).collect();
+    let dashes = "─".repeat(w[0] - width(title));
+    out.push_str(&format!(
+        "╭ {} {dashes}{rest}╮\n",
+        paint.cell(title, 0, TITLE)
+    ));
+    out.push_str(&format!("│{}│\n", line(&grid.header(), true)));
+    out.push_str(&format!("├{}┤\n", border("┼")));
+    for row in &grid.rows {
+        if row.span {
+            let text = row.cells.first().map_or("", String::as_str);
             out.push_str(&format!(
-                "├{}┤\n",
-                (0..w.len()).map(seg).collect::<Vec<_>>().join("┼")
+                "│ {} │ {} │\n",
+                paint.cell(&row.label, w[0], LABEL),
+                pad(text, span_width(&w))
             ));
+        } else {
+            let cells: Vec<&str> = std::iter::once(row.label.as_str())
+                .chain(row.cells.iter().map(String::as_str))
+                .collect();
+            out.push_str(&format!("│{}│\n", line(&cells, false)));
         }
     }
-    out.push_str(&format!(
-        "╰{}╯\n",
-        (0..w.len()).map(seg).collect::<Vec<_>>().join("┴")
-    ));
+    out.push_str(&format!("╰{}╯\n", border("┴")));
 }
 
 #[cfg(test)]
@@ -183,7 +208,13 @@ mod tests {
 
     #[test]
     fn every_line_has_the_same_width() {
-        for name in ["apple-m5", "apple-m2-pro", "sparse-mac"] {
+        for name in [
+            "apple-m5",
+            "apple-m2-pro",
+            "sparse-mac",
+            "linux-x86-intel-hybrid",
+            "linux-x86-amd-gce",
+        ] {
             let text = render(&build(&fixture(name), &UNICODE), false);
             let widths: std::collections::BTreeSet<usize> = text.lines().map(width).collect();
             assert_eq!(widths.len(), 1, "{name}:\n{text}");

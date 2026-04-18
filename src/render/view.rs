@@ -3,7 +3,8 @@
 
 use unicode_width::UnicodeWidthStr;
 
-use crate::model::{Cache, CacheKind, Cluster, Cpu, F};
+use crate::model::{Cache, CacheKind, Clocks, Cluster, Cpu, F};
+use crate::units::Hertz;
 
 /// Longest a value line may get before wrapping onto the next line.
 pub const WRAP_WIDTH: usize = 56;
@@ -11,16 +12,20 @@ pub const WRAP_WIDTH: usize = 56;
 pub struct Glyphs {
     /// Between list items.
     pub sep: &'static str,
+    /// Between items that themselves contain commas, such as CPU lists.
+    pub set_sep: &'static str,
     /// In counts: `4 × Super`, `×2`.
     pub times: &'static str,
 }
 
 pub const UNICODE: Glyphs = Glyphs {
     sep: " · ",
+    set_sep: " · ",
     times: "×",
 };
 pub const ASCII: Glyphs = Glyphs {
     sep: ", ",
+    set_sep: " | ",
     times: "x",
 };
 
@@ -53,22 +58,29 @@ pub struct Grid {
 #[derive(Debug, PartialEq)]
 pub struct GridRow {
     pub label: String,
-    /// One per column; empty when that column doesn't have this row.
+    /// One per column; empty when that column doesn't have this row. A spanning row has one cell.
     pub cells: Vec<String>,
+    /// Drawn as one cell across every column, e.g. a cache shared by all core types.
+    pub span: bool,
 }
 
 impl Grid {
-    /// The header row, then the data rows, each starting with its label.
-    pub fn table(&self) -> Vec<Vec<&str>> {
-        let header = std::iter::once(self.corner)
+    /// The corner label, then one label per column.
+    pub fn header(&self) -> Vec<&str> {
+        std::iter::once(self.corner)
             .chain(self.columns.iter().map(String::as_str))
-            .collect();
-        let rows = self.rows.iter().map(|r| {
+            .collect()
+    }
+
+    /// The header and every non-spanning row, each starting with its label. Spanning rows are left
+    /// out because they don't align to columns.
+    pub fn table(&self) -> Vec<Vec<&str>> {
+        let rows = self.rows.iter().filter(|r| !r.span).map(|r| {
             std::iter::once(r.label.as_str())
                 .chain(r.cells.iter().map(String::as_str))
                 .collect()
         });
-        std::iter::once(header).chain(rows).collect()
+        std::iter::once(self.header()).chain(rows).collect()
     }
 }
 
@@ -115,10 +127,33 @@ pub fn wrap(items: &[&str], sep: &str, max: usize) -> Vec<String> {
     lines
 }
 
+/// Formats sorted CPU numbers as a compact list: `0-3,8,10-11`.
+pub fn format_cpu_list(cpus: &[u32]) -> String {
+    let mut ranges = Vec::new();
+    let mut iter = cpus.iter().copied().peekable();
+    while let Some(start) = iter.next() {
+        let mut end = start;
+        while end
+            .checked_add(1)
+            .is_some_and(|next| iter.peek() == Some(&next))
+        {
+            end += 1;
+            iter.next();
+        }
+        ranges.push(if start == end {
+            start.to_string()
+        } else {
+            format!("{start}-{end}")
+        });
+    }
+    ranges.join(",")
+}
+
 pub fn build(cpu: &Cpu, g: &Glyphs) -> Vec<Section> {
     [
-        identity(cpu),
+        identity(cpu, g),
         topology(cpu, g),
+        clocks(cpu),
         cache(cpu, g),
         features(cpu, g),
     ]
@@ -151,12 +186,14 @@ fn val<T: ToString>(fact: &F<T>) -> Option<String> {
     fact.as_ref().map(|f| f.value.to_string())
 }
 
-fn identity(cpu: &Cpu) -> Option<Section> {
+fn identity(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
     let id = &cpu.identity;
     let arch = val(&id.arch).map(|arch| match val(&id.isa_level) {
         Some(isa) => format!("{arch} ({isa})"),
         None => arch,
     });
+    let hypervisor =
+        val(&id.hypervisor).map(|h| format!("{h}{}topology as reported by guest", g.sep));
     pairs(
         "Identity",
         vec![
@@ -164,6 +201,7 @@ fn identity(cpu: &Cpu) -> Option<Section> {
             ("Vendor", one(val(&id.vendor))),
             ("Architecture", one(arch)),
             ("Microcode", one(val(&id.microcode))),
+            ("Hypervisor", one(hypervisor)),
         ],
     )
 }
@@ -197,6 +235,14 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
             .collect::<Vec<_>>()
             .join(g.sep)
     });
+    let numa = (t.numa_nodes.len() > 1).then(|| {
+        let lists: Vec<String> = t
+            .numa_nodes
+            .iter()
+            .map(|n| format_cpu_list(&n.cpus))
+            .collect();
+        format!("{} nodes: {}", t.numa_nodes.len(), lists.join(g.set_sep))
+    });
     pairs(
         "Topology",
         vec![
@@ -206,30 +252,82 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                 (!cores.is_empty()).then(|| vec![cores.join(g.sep)]),
             ),
             ("Clusters", one(clusters)),
+            ("NUMA", one(numa)),
         ],
     )
 }
 
-fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
+fn clock<'a>(clocks: &'a Clocks, label: &str) -> &'a F<Hertz> {
+    match label {
+        "Base" => &clocks.base,
+        "Max" => &clocks.max,
+        _ => &clocks.current,
+    }
+}
+
+fn clocks(cpu: &Cpu) -> Option<Section> {
     let clusters: Vec<&Cluster> = cpu
         .clusters
         .iter()
-        .filter(|c| !c.caches.is_empty())
+        .filter(|c| !c.clock.is_empty())
+        .collect();
+    let rows: Vec<GridRow> = ["Base", "Max", "Current"]
+        .into_iter()
+        .filter_map(|label| {
+            let cells: Vec<String> = clusters
+                .iter()
+                .map(|c| val(clock(&c.clock, label)).unwrap_or_default())
+                .collect();
+            cells.iter().any(|c| !c.is_empty()).then(|| GridRow {
+                label: label.to_string(),
+                cells,
+                span: false,
+            })
+        })
+        .collect();
+    if rows.is_empty() {
+        return None;
+    }
+    let columns = clusters.iter().map(|c| c.label().to_string()).collect();
+    Some(Section {
+        title: "Clocks",
+        body: Body::Grid(Grid {
+            corner: "",
+            columns,
+            rows,
+        }),
+    })
+}
+
+fn cache_label(level: u8, kind: CacheKind) -> String {
+    format!("L{level}{}", kind.suffix())
+}
+
+fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
+    // A cache without a size (common in VMs) has nothing to show.
+    let clusters: Vec<&Cluster> = cpu
+        .clusters
+        .iter()
+        .filter(|c| c.caches.iter().any(|k| k.size.is_some()))
         .collect();
     if clusters.is_empty() {
         return None;
     }
     let mut keys: Vec<(u8, CacheKind)> = clusters
         .iter()
-        .flat_map(|c| c.caches.iter().map(|k| (k.level, k.kind)))
+        .flat_map(|c| {
+            c.caches
+                .iter()
+                .filter(|k| k.size.is_some())
+                .map(|k| (k.level, k.kind))
+        })
         .collect();
     keys.sort();
     keys.dedup();
-    let rows = keys
+    let mut rows: Vec<((u8, CacheKind), GridRow)> = keys
         .into_iter()
-        .map(|(level, kind)| GridRow {
-            label: format!("L{level}{}", kind.suffix()),
-            cells: clusters
+        .map(|(level, kind)| {
+            let cells = clusters
                 .iter()
                 .map(|c| {
                     c.caches
@@ -238,10 +336,33 @@ fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                         .map(|k| cache_cell(k, c, g))
                         .unwrap_or_default()
                 })
-                .collect(),
+                .collect();
+            (
+                (level, kind),
+                GridRow {
+                    label: cache_label(level, kind),
+                    cells,
+                    span: false,
+                },
+            )
         })
         .collect();
+    rows.extend(
+        cpu.shared_caches
+            .iter()
+            .filter(|k| k.size.is_some())
+            .map(|k| {
+                let row = GridRow {
+                    label: cache_label(k.level, k.kind),
+                    cells: vec![shared_cell(k, cpu, g)],
+                    span: true,
+                };
+                ((k.level, k.kind), row)
+            }),
+    );
+    rows.sort_by_key(|(key, _)| *key);
     let columns = clusters.iter().map(|c| c.label().to_string()).collect();
+    let rows = rows.into_iter().map(|(_, row)| row).collect();
     Some(Section {
         title: "Cache",
         body: Body::Grid(Grid {
@@ -250,6 +371,27 @@ fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
             rows,
         }),
     })
+}
+
+/// `25 MiB shared by all 12 cores`, or `16 MiB / 8 CPUs` when shared by only some.
+fn shared_cell(cache: &Cache, cpu: &Cpu, g: &Glyphs) -> String {
+    let Some(size) = &cache.size else {
+        return String::new();
+    };
+    let mut text = size.value.to_string();
+    let logical = cpu.topology.logical_cpus.as_ref().map(|f| f.value);
+    match cache.shared_by.as_ref().map(|f| f.value) {
+        Some(n) if Some(n) == logical => match &cpu.topology.physical_cores {
+            Some(p) => text.push_str(&format!(" shared by all {} cores", p.value)),
+            None => text.push_str(" shared by all cores"),
+        },
+        Some(n) => text.push_str(&format!(" / {n} CPUs")),
+        None => {}
+    }
+    if let Some(n) = cache.instances.as_ref().filter(|n| n.value > 1) {
+        text.push_str(&format!(" {}{}", g.times, n.value));
+    }
+    text
 }
 
 /// `192 KiB / core`, `16 MiB / 4 cores`, or `16 MiB / 4 cores ×2` when the cluster has several.
@@ -427,5 +569,88 @@ mod tests {
             row(&build(&cpu, &UNICODE), "SIMD").lines,
             ["AVX2 · AVX-512 (F/BW) · AMX (TILE)"]
         );
+    }
+
+    fn grid_titled<'a>(sections: &'a [Section], title: &str) -> &'a Grid {
+        sections
+            .iter()
+            .find_map(|s| match &s.body {
+                Body::Grid(g) if s.title == title => Some(g),
+                _ => None,
+            })
+            .unwrap_or_else(|| panic!("no {title} grid"))
+    }
+
+    #[test]
+    fn linux_sections_in_order() {
+        let s = build(&fixture("linux-x86-intel-hybrid"), &UNICODE);
+        assert_eq!(
+            titles(&s),
+            ["Identity", "Topology", "Clocks", "Cache", "Features"]
+        );
+    }
+
+    #[test]
+    fn clocks_grid_per_core_type() {
+        let s = build(&fixture("linux-x86-intel-hybrid"), &UNICODE);
+        let g = grid_titled(&s, "Clocks");
+        assert_eq!(g.columns, ["Performance", "Efficiency"]);
+        let rows: Vec<(&str, Vec<&str>)> = g
+            .rows
+            .iter()
+            .map(|r| {
+                (
+                    r.label.as_str(),
+                    r.cells.iter().map(String::as_str).collect(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            rows,
+            [
+                ("Base", vec!["3.60 GHz", "2.70 GHz"]),
+                ("Max", vec!["5.00 GHz", "3.80 GHz"])
+            ]
+        );
+    }
+
+    #[test]
+    fn a_cache_shared_by_every_core_spans_all_columns() {
+        let s = build(&fixture("linux-x86-intel-hybrid"), &UNICODE);
+        let g = grid_titled(&s, "Cache");
+        let l2 = g.rows.iter().find(|r| r.label == "L2").unwrap();
+        assert_eq!(l2.cells, ["1280 KiB / core", "2 MiB / 4 cores"]);
+        let l3 = g.rows.last().unwrap();
+        assert_eq!(
+            (l3.label.as_str(), l3.span, l3.cells.as_slice()),
+            (
+                "L3",
+                true,
+                &["25 MiB shared by all 12 cores".to_string()][..]
+            )
+        );
+    }
+
+    #[test]
+    fn hypervisor_and_numa_rows() {
+        let s = build(&fixture("linux-x86-amd-gce"), &UNICODE);
+        assert_eq!(
+            row(&s, "Hypervisor").lines,
+            ["Google Compute Engine · topology as reported by guest"]
+        );
+        assert_eq!(row(&s, "NUMA").lines, ["2 nodes: 0-3,8-11 · 4-7,12-15"]);
+        assert_eq!(
+            grid_titled(&s, "Cache").rows.last().unwrap().cells,
+            ["16 MiB / 4 cores ×2"]
+        );
+        let ascii = build(&fixture("linux-x86-amd-gce"), &ASCII);
+        assert_eq!(row(&ascii, "NUMA").lines, ["2 nodes: 0-3,8-11 | 4-7,12-15"]);
+    }
+
+    #[test]
+    fn cpu_lists_compress_ranges() {
+        assert_eq!(format_cpu_list(&[0, 1, 2, 3, 8, 10, 11]), "0-3,8,10-11");
+        assert_eq!(format_cpu_list(&[5]), "5");
+        assert_eq!(format_cpu_list(&[]), "");
     }
 }

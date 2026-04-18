@@ -42,11 +42,28 @@ pub fn render(sections: &[Section]) -> String {
                     .iter()
                     .map(|row| row.iter().map(String::as_str).collect())
                     .collect();
-                let widths = column_widths(&table);
-                for cells in &table {
-                    let line: Vec<String> =
+                let mut widths = column_widths(&table);
+                for row in grid.rows.iter().filter(|r| r.span) {
+                    widths[0] = widths[0].max(width(&row.label));
+                }
+                let aligned = |cells: &[&str]| {
+                    let padded: Vec<String> =
                         cells.iter().zip(&widths).map(|(c, w)| pad(c, *w)).collect();
-                    out.push(format!("  {}", line.join("  ")).trim_end().to_string());
+                    format!("  {}", padded.join("  ")).trim_end().to_string()
+                };
+                out.push(aligned(&table[0]));
+                let mut data = table[1..].iter();
+                for row in &grid.rows {
+                    if row.span {
+                        let text = ascii(row.cells.first().map_or("", String::as_str));
+                        out.push(
+                            format!("  {}  {text}", pad(&ascii(&row.label), widths[0]))
+                                .trim_end()
+                                .to_string(),
+                        );
+                    } else if let Some(cells) = data.next() {
+                        out.push(aligned(cells));
+                    }
                 }
             }
         }
@@ -113,5 +130,11 @@ Topology
     #[test]
     fn sparse_plain_output() {
         assert_eq!(render(&build(&fixture("sparse-mac"), &ASCII)), SPARSE);
+    }
+
+    #[test]
+    fn spanning_rows_follow_the_label_column() {
+        let text = render(&build(&fixture("linux-x86-intel-hybrid"), &ASCII));
+        assert!(text.contains("\n  L2     1280 KiB / core  2 MiB / 4 cores\n  L3     25 MiB shared by all 12 cores\n"), "{text}");
     }
 }

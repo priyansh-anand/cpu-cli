@@ -160,7 +160,7 @@ impl Sources {
     pub fn live() -> Sources {
         Sources {
             os: Os::current(),
-            fs: Box::new(Stub),
+            fs: live_fs(),
             sysctl: live_sysctl(),
             cpuid: Box::new(Stub),
             ioreg: Box::new(Stub),
@@ -171,6 +171,16 @@ impl Sources {
     pub fn recorded(path: &Path) -> Result<Sources, SnapshotError> {
         Snapshot::open(path).map(Snapshot::into_sources)
     }
+}
+
+#[cfg(target_os = "linux")]
+fn live_fs() -> Box<dyn Fs> {
+    Box::new(files::LiveFs::root())
+}
+
+#[cfg(not(target_os = "linux"))]
+fn live_fs() -> Box<dyn Fs> {
+    Box::new(Stub)
 }
 
 #[cfg(target_os = "macos")]

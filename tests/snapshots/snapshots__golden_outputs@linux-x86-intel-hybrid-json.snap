@@ -1,0 +1,419 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "Intel",
+      "origin": "detected",
+      "from": "/proc/cpuinfo:vendor_id"
+    },
+    "name": {
+      "value": "12th Gen Intel(R) Core(TM) i7-12700K",
+      "origin": "detected",
+      "from": "/proc/cpuinfo:model name"
+    },
+    "arch": {
+      "value": "x86_64",
+      "origin": "detected",
+      "from": "/proc/sys/kernel/arch"
+    },
+    "x86_family": {
+      "value": 6,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:cpu family"
+    },
+    "x86_model": {
+      "value": 151,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:model"
+    },
+    "x86_stepping": {
+      "value": 2,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:stepping"
+    },
+    "microcode": {
+      "value": "0x2f",
+      "origin": "detected",
+      "from": "/proc/cpuinfo:microcode"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "physical_cores": {
+      "value": 12,
+      "origin": "derived"
+    },
+    "logical_cpus": {
+      "value": 20,
+      "origin": "derived"
+    },
+    "numa_nodes": [
+      {
+        "id": 0,
+        "cpus": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ]
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "kind": "performance",
+      "cores": {
+        "value": 8,
+        "origin": "derived"
+      },
+      "threads": {
+        "value": 16,
+        "origin": "derived"
+      },
+      "clock": {
+        "base": {
+          "value": 3600000000,
+          "origin": "detected",
+          "from": "/sys/devices/system/cpu/cpu0/cpufreq/base_frequency"
+        },
+        "max": {
+          "value": 5000000000,
+          "origin": "detected",
+          "from": "/sys/devices/system/cpu/cpu15/cpufreq/cpuinfo_max_freq"
+        }
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index1/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 49152,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index0/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 1310720,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index2/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "efficiency",
+      "cores": {
+        "value": 4,
+        "origin": "derived"
+      },
+      "threads": {
+        "value": 4,
+        "origin": "derived"
+      },
+      "clock": {
+        "base": {
+          "value": 2700000000,
+          "origin": "detected",
+          "from": "/sys/devices/system/cpu/cpu16/cpufreq/base_frequency"
+        },
+        "max": {
+          "value": 3800000000,
+          "origin": "detected",
+          "from": "/sys/devices/system/cpu/cpu19/cpufreq/cpuinfo_max_freq"
+        }
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 65536,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu16/cache/index1/size"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu16/cache/index0/size"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 2097152,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu16/cache/index2/size"
+          },
+          "shared_by": {
+            "value": 4,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "shared_caches": [
+    {
+      "level": 3,
+      "kind": "unified",
+      "size": {
+        "value": 26214400,
+        "origin": "detected",
+        "from": "/sys/devices/system/cpu/cpu0/cache/index3/size"
+      },
+      "shared_by": {
+        "value": 20,
+        "origin": "derived"
+      },
+      "instances": {
+        "value": 1,
+        "origin": "derived"
+      }
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "sse4_2",
+            "name": "SSE4.2"
+          },
+          {
+            "raw": "avx",
+            "name": "AVX"
+          },
+          {
+            "raw": "avx2",
+            "name": "AVX2"
+          },
+          {
+            "raw": "fma",
+            "name": "FMA"
+          },
+          {
+            "raw": "avx_vnni",
+            "name": "AVX-VNNI"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "aes",
+            "name": "AES"
+          },
+          {
+            "raw": "pclmulqdq",
+            "name": "PCLMUL"
+          },
+          {
+            "raw": "vaes",
+            "name": "VAES"
+          },
+          {
+            "raw": "vpclmulqdq",
+            "name": "VPCLMUL"
+          },
+          {
+            "raw": "sha_ni",
+            "name": "SHA-NI"
+          },
+          {
+            "raw": "rdrand",
+            "name": "RDRAND"
+          },
+          {
+            "raw": "rdseed",
+            "name": "RDSEED"
+          }
+        ]
+      },
+      {
+        "group": "virtualization",
+        "features": [
+          {
+            "raw": "vmx",
+            "name": "VT-x"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "features": [
+          {
+            "raw": "ibt",
+            "name": "IBT"
+          },
+          {
+            "raw": "user_shstk",
+            "name": "CET-SS"
+          },
+          {
+            "raw": "smep",
+            "name": "SMEP"
+          },
+          {
+            "raw": "smap",
+            "name": "SMAP"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "abm",
+      "adx",
+      "aes",
+      "apic",
+      "avx",
+      "avx2",
+      "avx_vnni",
+      "bmi1",
+      "bmi2",
+      "clflush",
+      "clflushopt",
+      "cmov",
+      "constant_tsc",
+      "cpuid",
+      "cx16",
+      "cx8",
+      "de",
+      "erms",
+      "f16c",
+      "fma",
+      "fpu",
+      "fxsr",
+      "ht",
+      "ibt",
+      "lahf_lm",
+      "lm",
+      "mca",
+      "mce",
+      "mmx",
+      "movbe",
+      "msr",
+      "mtrr",
+      "nopl",
+      "nx",
+      "pae",
+      "pat",
+      "pclmulqdq",
+      "pge",
+      "pni",
+      "popcnt",
+      "pse",
+      "pse36",
+      "rdrand",
+      "rdseed",
+      "rep_good",
+      "sep",
+      "sha_ni",
+      "smap",
+      "smep",
+      "sse",
+      "sse2",
+      "sse4_1",
+      "sse4_2",
+      "ssse3",
+      "syscall",
+      "tsc",
+      "user_shstk",
+      "vaes",
+      "vme",
+      "vmx",
+      "vpclmulqdq",
+      "xgetbv1",
+      "xsave",
+      "xsavec",
+      "xsaveopt",
+      "xsaves",
+      "xtopology"
+    ]
+  }
+}

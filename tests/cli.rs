@@ -118,7 +118,7 @@ fn dump_and_from_conflict() {
     assert!(err.contains("cannot be used with"), "{err}");
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 #[test]
 fn a_dump_replays_exactly_like_the_live_machine() {
     let dir = tempfile::tempdir().unwrap();

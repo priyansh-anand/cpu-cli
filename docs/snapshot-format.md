@@ -9,7 +9,7 @@ A snapshot is either a **directory** (how fixtures are stored in `tests/fixtures
 ```
 meta.toml       required: what was captured, and by which version of cpu
 sysctl.toml     optional: sysctl keys and values (macOS)
-fs/...          optional: file contents, at their absolute path under fs/ (Linux, planned)
+fs/...          optional: file contents, at their absolute path under fs/ (Linux)
 ```
 
 ### `meta.toml`
@@ -47,7 +47,9 @@ Capture uses a fixed **allowlist**, defined in `src/source/dump.rs`:
 | Source | Captured |
 |---|---|
 | sysctl (macOS) | every key under `hw.*` and `machdep.cpu.*`, plus `sysctl.proc_translated` and `kern.osrelease` |
-| files (Linux, planned) | `/proc/cpuinfo`, `/sys/devices/system/cpu/**`, `/sys/devices/system/node/**`, and the DMI vendor and product name |
+| files (Linux) | `/proc/cpuinfo` (with `Serial` lines removed), `/proc/sys/kernel/{arch,osrelease}`, CPU and node lists, per-CPU topology, capacity, MIDR and cpufreq files, per-cache `level`, `type`, `size` and sharing files, and the DMI vendor and product name |
+
+Linux files are listed one by one rather than swept by directory, because sysfs also contains kernel addresses (for example `crash_notes`).
 
 The allowlist is a privacy guarantee: a snapshot never contains the hostname, serial numbers, hardware UUIDs or anything else outside it. It is also why capture sweeps whole trees rather than recording only what today's collector reads: when a future version reads a new key, old snapshots already contain it.
 

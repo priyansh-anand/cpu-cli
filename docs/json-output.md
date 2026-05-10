@@ -65,7 +65,7 @@ A cluster is a **group of cores of one type**, e.g. `Super` and `Efficiency` on 
 
 ### Features
 
-- `features.raw` lists every enabled flag exactly as the OS reports it (`FEAT_SME2` on macOS; `avx2` on Linux, planned). Use this for scripting.
+- `features.raw` lists every enabled flag exactly as the OS reports it (`FEAT_SME2` on macOS; `avx2` or `asimd` on Linux). Use this for scripting.
 - `features.groups` is the curated, display-oriented grouping shown in the table. Its membership and names may change between releases; don't script against it.
 
 ### Diagnostics

@@ -1,0 +1,247 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "Apple",
+      "origin": "database",
+      "from": "arm-midr@2026-09"
+    },
+    "arch": {
+      "value": "aarch64",
+      "origin": "detected",
+      "from": "/proc/sys/kernel/arch"
+    },
+    "arm_midr": {
+      "value": 1628372992,
+      "origin": "detected",
+      "from": "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"
+    },
+    "hypervisor": {
+      "value": "Apple Virtualization Generic Platform",
+      "origin": "detected",
+      "from": "/sys/class/dmi/id/product_name"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "physical_cores": {
+      "value": 4,
+      "origin": "derived"
+    },
+    "logical_cpus": {
+      "value": 4,
+      "origin": "derived"
+    },
+    "smt_per_core": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "numa_nodes": [
+      {
+        "id": 0,
+        "cpus": [
+          0,
+          1,
+          2,
+          3
+        ]
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "kind": "uniform",
+      "cores": {
+        "value": 4,
+        "origin": "derived"
+      },
+      "threads": {
+        "value": 4,
+        "origin": "derived"
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "shared_by": {
+            "value": 4,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "asimd",
+            "name": "NEON"
+          },
+          {
+            "raw": "asimdhp",
+            "name": "FP16"
+          },
+          {
+            "raw": "bf16",
+            "name": "BF16"
+          },
+          {
+            "raw": "i8mm",
+            "name": "I8MM"
+          },
+          {
+            "raw": "asimddp",
+            "name": "DotProd"
+          },
+          {
+            "raw": "asimdfhm",
+            "name": "FHM"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "aes",
+            "name": "AES"
+          },
+          {
+            "raw": "pmull",
+            "name": "PMULL"
+          },
+          {
+            "raw": "sha1",
+            "name": "SHA1"
+          },
+          {
+            "raw": "sha2",
+            "name": "SHA256"
+          },
+          {
+            "raw": "sha512",
+            "name": "SHA512"
+          },
+          {
+            "raw": "sha3",
+            "name": "SHA3"
+          },
+          {
+            "raw": "crc32",
+            "name": "CRC32"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "features": [
+          {
+            "raw": "paca",
+            "name": "PAC"
+          },
+          {
+            "raw": "bti",
+            "name": "BTI"
+          },
+          {
+            "raw": "dit",
+            "name": "DIT"
+          },
+          {
+            "raw": "sb",
+            "name": "SB"
+          }
+        ]
+      },
+      {
+        "group": "other",
+        "features": [
+          {
+            "raw": "atomics",
+            "name": "LSE"
+          },
+          {
+            "raw": "uscat",
+            "name": "LSE2"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "aes",
+      "afp",
+      "asimd",
+      "asimddp",
+      "asimdfhm",
+      "asimdhp",
+      "asimdrdm",
+      "atomics",
+      "bf16",
+      "bti",
+      "cpuid",
+      "crc32",
+      "dcpodp",
+      "dcpop",
+      "dit",
+      "ebf16",
+      "evtstrm",
+      "fcma",
+      "flagm",
+      "flagm2",
+      "fp",
+      "fphp",
+      "frint",
+      "i8mm",
+      "ilrcpc",
+      "jscvt",
+      "lrcpc",
+      "paca",
+      "pacg",
+      "pmull",
+      "sb",
+      "sha1",
+      "sha2",
+      "sha3",
+      "sha512",
+      "uscat"
+    ]
+  }
+}

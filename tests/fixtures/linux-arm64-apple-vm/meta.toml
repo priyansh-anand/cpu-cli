@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "linux"
+arch = "aarch64"
+kernel = "6.8.0-100-generic"
+created_unix = 1790247241
+note = "Linux arm64 VM (Docker via Colima) on an Apple M5; captured with cpu --dump"

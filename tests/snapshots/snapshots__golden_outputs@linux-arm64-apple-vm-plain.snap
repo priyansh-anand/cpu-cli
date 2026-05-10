@@ -1,0 +1,17 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+Identity
+  Vendor        Apple
+  Architecture  aarch64
+  Hypervisor    Apple Virtualization Generic Platform, topology as reported by guest
+
+Topology
+  Cores  4 physical, 4 logical, no SMT
+
+Features
+  SIMD      NEON, FP16, BF16, I8MM, DotProd, FHM
+  Crypto    AES, PMULL, SHA1, SHA256, SHA512, SHA3, CRC32
+  Security  PAC, BTI, DIT, SB
+  Other     LSE, LSE2

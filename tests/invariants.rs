@@ -54,6 +54,25 @@ fn counts_add_up() {
                 }
             }
         }
+        if let Some(l) = &t.logical_cpus {
+            for cache in &cpu.shared_caches {
+                if let (Some(s), Some(i)) = (&cache.shared_by, &cache.instances) {
+                    assert_eq!(
+                        s.value * i.value,
+                        l.value,
+                        "{name}: shared L{}: shared_by x instances != logical CPUs",
+                        cache.level
+                    );
+                }
+            }
+            if !t.numa_nodes.is_empty() {
+                let numa: usize = t.numa_nodes.iter().map(|n| n.cpus.len()).sum();
+                assert_eq!(
+                    numa as u32, l.value,
+                    "{name}: NUMA nodes don't cover every logical CPU"
+                );
+            }
+        }
     }
 }
 

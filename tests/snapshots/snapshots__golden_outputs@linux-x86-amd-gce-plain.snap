@@ -1,0 +1,26 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+Identity
+  Name          AMD EPYC 7B13
+  Vendor        AMD
+  Architecture  x86_64
+  Microcode     0x1000065
+  Hypervisor    Google Compute Engine, topology as reported by guest
+
+Topology
+  Cores  8 physical, 16 logical, SMT x2
+  NUMA   2 nodes: 0-3,8-11 | 4-7,12-15
+
+Cache
+  Level  Cores
+  L1i    32 KiB / core
+  L1d    32 KiB / core
+  L2     512 KiB / core
+  L3     16 MiB / 4 cores x2
+
+Features
+  SIMD      SSE4.2, AVX, AVX2, FMA
+  Crypto    AES, PCLMUL, VAES, VPCLMUL, SHA-NI, RDRAND, RDSEED
+  Security  SMEP, SMAP

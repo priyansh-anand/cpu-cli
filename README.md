@@ -28,7 +28,7 @@
 ╰──────────────────────────────────────────────────────────────────╯
 ```
 
-> **Status: early development.** macOS on Apple Silicon is supported today. Linux (x86 and ARM) and Intel Macs are in progress; see [Platform support](#platform-support).
+> **Status: early development.** macOS on Apple Silicon and Linux (x86-64 and ARM64) are supported today. Intel Macs are in progress; see [Platform support](#platform-support).
 
 ## Why
 
@@ -114,7 +114,7 @@ cpu --dump
 # ./cpu-dump-1790208000.tar.gz
 ```
 
-Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (`sysctl` keys under `hw.*` and `machdep.cpu.*`, plus the OS release). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
+Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*`; on Linux, `/proc/cpuinfo` without serial numbers and specific files under `/sys/devices/system/cpu` and `/sys/devices/system/node`). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
 
 ### Exit codes
 
@@ -132,7 +132,7 @@ Every value has one of three origins, visible in `--json`:
 |---|---|---|
 | `detected` | Read from this machine; `from` names the exact key or file. | `sysctl:hw.perflevel0.l2cachesize` |
 | `derived` | Computed from other detected values. | SMT = logical ÷ physical CPUs |
-| `database` | Filled from a built-in table because the OS doesn't report it; `from` names the table and its date. Planned: no databases ship yet. | `apple-chips@2026-09` |
+| `database` | Filled from a built-in table because the OS reports only an ID; `from` names the table and its date. Used for ARM core and vendor names on Linux. | `arm-midr@2026-09` |
 
 If none of these can produce a value, the row is hidden.
 
@@ -140,10 +140,11 @@ If none of these can produce a value, the row is hidden.
 
 | Platform | Status |
 |---|---|
-| macOS, Apple Silicon | ✅ Supported: identity, per-core-type clusters, L1/L2 caches, feature flags |
-| Linux, x86-64 and ARM64 | 🚧 In progress |
+| macOS, Apple Silicon | ✅ Identity, per-core-type clusters, L1/L2 caches, feature flags |
+| Linux, x86-64 | ✅ Identity, Intel hybrid P/E cores, caches (including an L3 shared across core types), base/max clocks, NUMA nodes, hypervisor |
+| Linux, ARM64 | ✅ Identity (core names from the ARM MIDR table), big.LITTLE clusters, caches, clocks, NUMA, hypervisor |
 | macOS, Intel | 🚧 Planned |
-| Clock speeds (all platforms) | 🚧 Planned |
+| Clock speeds on Apple Silicon | 🚧 Planned |
 | Windows, BSD | Not yet planned |
 
 On a platform that isn't supported yet, `cpu` exits with status 1 and a message instead of printing incomplete data.
@@ -176,9 +177,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test layout, how to add a machine
 
 ## Roadmap
 
-1. **Linux + x86**: `/proc` and `/sys` collector, CPUID, ARM core names, NUMA nodes, clock speeds.
-2. **Complete + release**: Intel Macs and Rosetta 2, Apple Silicon clock speeds, `--explain` (show where every value came from), Homebrew and crates.io releases.
-3. **Later**: Windows, theming, fleet auditing (`--check`).
+1. **Complete + release**: Intel Macs and Rosetta 2, Apple Silicon clock speeds, `--explain` (show where every value came from), Homebrew and crates.io releases.
+2. **Later**: Windows, theming, fleet auditing (`--check`).
 
 Out of scope: live monitoring (use `btop`), benchmarking and overclocking.
 

@@ -33,16 +33,21 @@ src/
   source/            the only code that touches the OS
     mod.rs           Sysctl / Fs / Cpuid / IoReg traits, Sources, Os
     macos.rs         live sysctl reads (macOS only)
+    files.rs         live file reads (Linux)
     snapshot.rs      snapshot format: open, write, parse
     dump.rs          --dump capture and its privacy allowlist
   collect/           raw source data → model
     macos.rs         macOS / Apple Silicon collector
+    linux.rs         Linux collector
+    sysfs.rs         /proc and /sys text parsers
     features.rs      raw feature flags → display groups
   render/            model → text (pure functions)
     view.rs          model → sections; shared by boxed and plain
     boxed.rs  plain.rs  json.rs
     mod.rs           mode and colour selection
-data/features.toml   feature flag display names and groups
+data/features.toml   feature flag display names, groups and families
+data/arm-midr.toml   GENERATED ARM core names
+scripts/             generators for data/arm-midr.toml and the synthetic Linux fixtures
 schema/cpu.v1.json   JSON output contract
 tests/               integration tests and fixtures (below)
 docs/                architecture, JSON contract, snapshot format
@@ -75,6 +80,21 @@ git diff tests/snapshots/          # review every changed line
 ```
 
 (or `cargo install cargo-insta` and use `cargo insta review`). Never hand-edit a `.snap` file; if one looks wrong, fix the code.
+
+## Run the tests on Linux
+
+From any machine with Docker:
+
+```sh
+docker run --rm -v "$PWD":/src -w /src -e CARGO_TARGET_DIR=/tmp/target rust:1 cargo test
+```
+
+This also exercises the live `/proc` and `/sys` readers and the dump/replay round trip on a real kernel.
+
+## Regenerate generated data
+
+- ARM core names: see the header of `scripts/gen-arm-midr.py` (pinned util-linux commit).
+- Synthetic Linux fixtures: `scripts/gen-linux-fixtures.py tests/fixtures`, then review the golden diffs.
 
 ## Add a machine fixture
 

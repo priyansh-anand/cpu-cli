@@ -29,8 +29,8 @@ Sources are the only code that touches the operating system. Each is a narrow tr
 | Trait | Reads | Live implementation | Used by |
 |---|---|---|---|
 | `Sysctl` | `sysctl` keys | `macos::LiveSysctl` | macOS collector |
-| `Fs` | files and directory listings | none yet (Linux, planned) | Linux collector |
-| `Cpuid` | CPUID leaves | none yet (x86, planned) | x86 decoding |
+| `Fs` | files and directory listings | `files::LiveFs` (Linux) | Linux collector |
+| `Cpuid` | CPUID leaves | none yet (planned, for Intel Macs) | x86 decoding |
 | `IoReg` | IOKit registry properties | none yet (planned) | Apple Silicon clocks |
 
 `Sources` bundles one of each plus the `Os` the data came from. `Sources::live()` builds this machine's sources; sources that don't exist on this OS are `Stub`s that return nothing, so collectors contain no `#[cfg]` logic. `Sources::recorded(path)` builds the same struct from a snapshot, backed by plain `BTreeMap`s.
@@ -48,6 +48,15 @@ Every read goes through a small `Reader` that applies **sanity gates**: counts m
 - Each `hw.perflevelN` is one core type, fastest first. Each becomes one `Cluster`, named with the OS's own label (`hw.perflevelN.name`: an M5 calls its fast cores "Super", not "Performance").
 - The top-level `hw.l1icachesize`/`hw.l1dcachesize`/`hw.l2cachesize` keys describe **only the efficiency cores** (6 MiB of L2 on an M5, whose Super cores have 16 MiB). The collector never uses them. Without `hw.perflevel*` keys (macOS 11) the Cache section is hidden rather than guessed.
 - There is no vendor key; "Apple" is derived from a brand string starting with `Apple `.
+
+### Linux specifics
+
+- Online CPUs come from `/sys/devices/system/cpu/online`; a core is a distinct `thread_siblings_list`, and a socket a distinct `physical_package_id`.
+- Core types: Intel hybrid lists P- and E-cores under `/sys/devices/cpu_core/cpus` and `/sys/devices/cpu_atom/cpus`. On ARM, CPUs are grouped by `cpu_capacity` and the `CPU part` from `/proc/cpuinfo`, fastest first, and named from the MIDR table.
+- Caches come from `cpuN/cache/indexM`. An instance whose `shared_cpu_list` spans more than one core type (an Intel hybrid L3) is a shared cache; offline CPUs never count as sharers.
+- Clocks are `base_frequency` and `cpuinfo_max_freq` (kHz). Current frequency is not collected: it changes every moment and would make a dump impossible to replay.
+- Hypervisor: x86 trusts the `hypervisor` CPU flag; ARM matches virtual-platform DMI names. The shown value is the DMI product name.
+- ARM names come from `data/arm-midr.toml`, generated from util-linux. Apple part `0x000` is left out: Apple's hypervisor reports it for every Linux guest, and lscpu would call it "Swift".
 
 ## Data model (`src/model.rs`)
 
@@ -102,9 +111,9 @@ Because the recorded and live sources implement the same traits, `cpu --json --f
 
 ## Built-in tables (`data/`, `build.rs`, `src/db.rs`)
 
-Human-edited TOML tables are compiled into static Rust arrays by `build.rs`. The build rejects duplicates, unknown groups and missing fields, so bad data fails the build instead of shipping. Today there is one table, `features.toml`, which controls how feature flags are grouped and named; it is presentation only and produces no `Fact`s.
+TOML tables in `data/` are compiled into static Rust arrays by `build.rs`. The build rejects duplicates, unknown groups and missing fields, so bad data fails the build instead of shipping. There are two tables. `features.toml` controls how feature flags are grouped and named; it is presentation only and produces no `Fact`s. `arm-midr.toml` names ARM vendors and cores from MIDR codes on Linux; it is generated from util-linux by `scripts/gen-arm-midr.py` and its values carry `origin: database` with the stamp `arm-midr@2026-09`.
 
-Planned tables (ARM core names by MIDR, Apple chip clock speeds) will fill only values the OS doesn't report, match chips by exact key only, and carry a citation per entry and a date stamp that appears in `origin.from`.
+Tables fill only values the OS doesn't report (it reports the ID, not the name), match by exact key only, and carry a citation and a date stamp that appears in `origin.from`. An Apple chip table for clock speeds is planned.
 
 ## Testing strategy
 

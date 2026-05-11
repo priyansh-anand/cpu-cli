@@ -24,6 +24,7 @@ struct FeatureEntry {
     raw: String,
     name: String,
     family: Option<String>,
+    arch: Option<String>,
     group: String,
     desc: String,
 }
@@ -72,8 +73,14 @@ fn features(out_dir: &Path) {
                 e.raw
             );
         }
+        let arch = match e.arch.as_deref() {
+            None => "None",
+            Some("arm") => "Some(Arch::Arm)",
+            Some("x86") => "Some(Arch::X86)",
+            Some(other) => panic!("data/features.toml: {:?} has unknown arch {other:?}", e.raw),
+        };
         out.push_str(&format!(
-            "    FeatureDef {{ raw: {:?}, name: {:?}, family: {:?}, group: FeatureGroup::{variant}, desc: {:?} }},\n",
+            "    FeatureDef {{ raw: {:?}, name: {:?}, family: {:?}, arch: {arch}, group: FeatureGroup::{variant}, desc: {:?} }},\n",
             e.raw, e.name, e.family, e.desc
         ));
     }

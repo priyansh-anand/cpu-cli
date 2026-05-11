@@ -1,6 +1,7 @@
 //! macOS collector. Apple Silicon reports each core type as a "perflevel" (`hw.perflevel0` is the
 //! fastest); each becomes one [`Cluster`]. Compiled on every OS so fixtures test it anywhere.
 
+use crate::db::Arch;
 use crate::model::{
     Cache, CacheKind, Clocks, Cluster, CoreKind, Cpu, Diagnostic, F, Fact, Identity, Topology,
 };
@@ -20,7 +21,7 @@ pub fn collect(sys: &dyn Sysctl) -> Cpu {
     let identity = identity(&mut r);
     let topology = topology(&mut r);
     let clusters = clusters(&mut r, &topology);
-    let features = features::group(arm_feature_flags(sys));
+    let features = features::group(arm_feature_flags(sys), Arch::Arm);
     Cpu {
         identity,
         topology,

@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use super::sysfs::{parse_cpu_list, parse_cpuinfo, parse_size};
 use super::{count, features, plausible_cache_size, ratio};
-use crate::db;
+use crate::db::{self, Arch};
 use crate::model::{
     Cache, CacheKind, Clocks, Cluster, CoreKind, Cpu, Diagnostic, F, Fact, Identity, NumaNode,
     Origin, Topology,
@@ -52,7 +52,8 @@ pub fn collect(fs: &dyn Fs) -> Cpu {
     let identity = identity(&mut r, &info);
     let topology = topology(&mut r, &cpus, &topo);
     let (clusters, shared_caches) = clusters(&mut r, &cpus, &info, &topo);
-    let features = features::group(flags(&info));
+    let arch = if is_x86(&info) { Arch::X86 } else { Arch::Arm };
+    let features = features::group(flags(&info), arch);
     Cpu {
         identity,
         topology,

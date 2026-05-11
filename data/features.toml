@@ -5,6 +5,8 @@
 # the table stays a curated summary instead of a dump. Entries are shown in file order.
 #
 # group: simd | crypto | virtualization | security | other
+# arch: optional, "arm" or "x86". An entry with an arch only matches that architecture; one
+#   without (such as aes) means the same thing on both.
 # family: optional. Consecutive members of a family display as one item, e.g. AVX-512 (F/BW/VL).
 #
 # Raw keys are shared across operating systems and architectures, so a key must mean the same
@@ -15,156 +17,182 @@
 
 [[feature]]
 raw = "AdvSIMD"
+arch = "arm"
 name = "NEON"
 group = "simd"
 desc = "Advanced SIMD: 128-bit vector instructions"
 
 [[feature]]
 raw = "FEAT_FP16"
+arch = "arm"
 name = "FP16"
 group = "simd"
 desc = "Half-precision floating-point arithmetic"
 
 [[feature]]
 raw = "FEAT_BF16"
+arch = "arm"
 name = "BF16"
 group = "simd"
 desc = "BFloat16 arithmetic for machine learning"
 
 [[feature]]
 raw = "FEAT_I8MM"
+arch = "arm"
 name = "I8MM"
 group = "simd"
 desc = "Int8 matrix multiply"
 
 [[feature]]
 raw = "FEAT_DotProd"
+arch = "arm"
 name = "DotProd"
 group = "simd"
 desc = "Int8 dot-product instructions"
 
 [[feature]]
 raw = "FEAT_FHM"
+arch = "arm"
 name = "FHM"
 group = "simd"
 desc = "Half-precision multiply-accumulate into single precision"
 
 [[feature]]
 raw = "FEAT_SME"
+arch = "arm"
 name = "SME"
 group = "simd"
 desc = "Scalable Matrix Extension"
 
 [[feature]]
 raw = "FEAT_SME2"
+arch = "arm"
 name = "SME2"
 group = "simd"
 desc = "Scalable Matrix Extension version 2"
 
 [[feature]]
 raw = "FEAT_SME2p1"
+arch = "arm"
 name = "SME2.1"
 group = "simd"
 desc = "Scalable Matrix Extension version 2.1"
 
 [[feature]]
 raw = "FEAT_AES"
+arch = "arm"
 name = "AES"
 group = "crypto"
 desc = "AES encryption instructions"
 
 [[feature]]
 raw = "FEAT_PMULL"
+arch = "arm"
 name = "PMULL"
 group = "crypto"
 desc = "Polynomial multiply, used by AES-GCM"
 
 [[feature]]
 raw = "FEAT_SHA1"
+arch = "arm"
 name = "SHA1"
 group = "crypto"
 desc = "SHA-1 hash instructions"
 
 [[feature]]
 raw = "FEAT_SHA256"
+arch = "arm"
 name = "SHA256"
 group = "crypto"
 desc = "SHA-256 hash instructions"
 
 [[feature]]
 raw = "FEAT_SHA512"
+arch = "arm"
 name = "SHA512"
 group = "crypto"
 desc = "SHA-512 hash instructions"
 
 [[feature]]
 raw = "FEAT_SHA3"
+arch = "arm"
 name = "SHA3"
 group = "crypto"
 desc = "SHA-3 hash instructions"
 
 [[feature]]
 raw = "FEAT_CRC32"
+arch = "arm"
 name = "CRC32"
 group = "crypto"
 desc = "CRC32 checksum instructions"
 
 [[feature]]
 raw = "FEAT_PAuth"
+arch = "arm"
 name = "PAC"
 group = "security"
 desc = "Pointer authentication (signed return addresses)"
 
 [[feature]]
 raw = "FEAT_BTI"
+arch = "arm"
 name = "BTI"
 group = "security"
 desc = "Branch target identification"
 
 [[feature]]
 raw = "FEAT_MTE"
+arch = "arm"
 name = "MTE"
 group = "security"
 desc = "Memory tagging extension"
 
 [[feature]]
 raw = "FEAT_SSBS"
+arch = "arm"
 name = "SSBS"
 group = "security"
 desc = "Speculative store bypass safe"
 
 [[feature]]
 raw = "FEAT_DIT"
+arch = "arm"
 name = "DIT"
 group = "security"
 desc = "Data-independent timing for constant-time code"
 
 [[feature]]
 raw = "FEAT_SB"
+arch = "arm"
 name = "SB"
 group = "security"
 desc = "Speculation barrier instruction"
 
 [[feature]]
 raw = "FEAT_CSV2"
+arch = "arm"
 name = "CSV2"
 group = "security"
 desc = "Hardening against Spectre v2 branch-target injection"
 
 [[feature]]
 raw = "FEAT_CSV3"
+arch = "arm"
 name = "CSV3"
 group = "security"
 desc = "Hardening against Meltdown-style data leaks"
 
 [[feature]]
 raw = "FEAT_LSE"
+arch = "arm"
 name = "LSE"
 group = "other"
 desc = "Large System Extensions: atomic read-modify-write instructions"
 
 [[feature]]
 raw = "FEAT_LSE2"
+arch = "arm"
 name = "LSE2"
 group = "other"
 desc = "Relaxed alignment for atomic loads and stores"
@@ -173,60 +201,70 @@ desc = "Relaxed alignment for atomic loads and stores"
 
 [[feature]]
 raw = "asimd"
+arch = "arm"
 name = "NEON"
 group = "simd"
 desc = "Advanced SIMD: 128-bit vector instructions"
 
 [[feature]]
 raw = "asimdhp"
+arch = "arm"
 name = "FP16"
 group = "simd"
 desc = "Half-precision floating-point arithmetic"
 
 [[feature]]
 raw = "bf16"
+arch = "arm"
 name = "BF16"
 group = "simd"
 desc = "BFloat16 arithmetic for machine learning"
 
 [[feature]]
 raw = "i8mm"
+arch = "arm"
 name = "I8MM"
 group = "simd"
 desc = "Int8 matrix multiply"
 
 [[feature]]
 raw = "asimddp"
+arch = "arm"
 name = "DotProd"
 group = "simd"
 desc = "Int8 dot-product instructions"
 
 [[feature]]
 raw = "asimdfhm"
+arch = "arm"
 name = "FHM"
 group = "simd"
 desc = "Half-precision multiply-accumulate into single precision"
 
 [[feature]]
 raw = "sve"
+arch = "arm"
 name = "SVE"
 group = "simd"
 desc = "Scalable Vector Extension"
 
 [[feature]]
 raw = "sve2"
+arch = "arm"
 name = "SVE2"
 group = "simd"
 desc = "Scalable Vector Extension version 2"
 
 [[feature]]
 raw = "sme"
+arch = "arm"
 name = "SME"
 group = "simd"
 desc = "Scalable Matrix Extension"
 
 [[feature]]
 raw = "sme2"
+arch = "arm"
 name = "SME2"
 group = "simd"
 desc = "Scalable Matrix Extension version 2"
@@ -239,84 +277,98 @@ desc = "AES encryption instructions (ARM and x86)"
 
 [[feature]]
 raw = "pmull"
+arch = "arm"
 name = "PMULL"
 group = "crypto"
 desc = "Polynomial multiply, used by AES-GCM"
 
 [[feature]]
 raw = "sha1"
+arch = "arm"
 name = "SHA1"
 group = "crypto"
 desc = "SHA-1 hash instructions"
 
 [[feature]]
 raw = "sha2"
+arch = "arm"
 name = "SHA256"
 group = "crypto"
 desc = "SHA-256 hash instructions"
 
 [[feature]]
 raw = "sha512"
+arch = "arm"
 name = "SHA512"
 group = "crypto"
 desc = "SHA-512 hash instructions"
 
 [[feature]]
 raw = "sha3"
+arch = "arm"
 name = "SHA3"
 group = "crypto"
 desc = "SHA-3 hash instructions"
 
 [[feature]]
 raw = "crc32"
+arch = "arm"
 name = "CRC32"
 group = "crypto"
 desc = "CRC32 checksum instructions"
 
 [[feature]]
 raw = "paca"
+arch = "arm"
 name = "PAC"
 group = "security"
 desc = "Pointer authentication (signed return addresses)"
 
 [[feature]]
 raw = "bti"
+arch = "arm"
 name = "BTI"
 group = "security"
 desc = "Branch target identification"
 
 [[feature]]
 raw = "mte"
+arch = "arm"
 name = "MTE"
 group = "security"
 desc = "Memory tagging extension"
 
 [[feature]]
 raw = "ssbs"
+arch = "arm"
 name = "SSBS"
 group = "security"
 desc = "Speculative store bypass safe"
 
 [[feature]]
 raw = "dit"
+arch = "arm"
 name = "DIT"
 group = "security"
 desc = "Data-independent timing for constant-time code"
 
 [[feature]]
 raw = "sb"
+arch = "arm"
 name = "SB"
 group = "security"
 desc = "Speculation barrier instruction"
 
 [[feature]]
 raw = "atomics"
+arch = "arm"
 name = "LSE"
 group = "other"
 desc = "Large System Extensions: atomic read-modify-write instructions"
 
 [[feature]]
 raw = "uscat"
+arch = "arm"
 name = "LSE2"
 group = "other"
 desc = "Relaxed alignment for atomic loads and stores"
@@ -325,36 +377,42 @@ desc = "Relaxed alignment for atomic loads and stores"
 
 [[feature]]
 raw = "sse4_2"
+arch = "x86"
 name = "SSE4.2"
 group = "simd"
 desc = "Streaming SIMD Extensions 4.2"
 
 [[feature]]
 raw = "avx"
+arch = "x86"
 name = "AVX"
 group = "simd"
 desc = "256-bit Advanced Vector Extensions"
 
 [[feature]]
 raw = "avx2"
+arch = "x86"
 name = "AVX2"
 group = "simd"
 desc = "256-bit integer vector instructions"
 
 [[feature]]
 raw = "fma"
+arch = "x86"
 name = "FMA"
 group = "simd"
 desc = "Fused multiply-add"
 
 [[feature]]
 raw = "avx_vnni"
+arch = "x86"
 name = "AVX-VNNI"
 group = "simd"
 desc = "Vector neural-network instructions on 256-bit registers"
 
 [[feature]]
 raw = "avx512f"
+arch = "x86"
 family = "AVX-512"
 name = "F"
 group = "simd"
@@ -362,6 +420,7 @@ desc = "AVX-512 foundation"
 
 [[feature]]
 raw = "avx512cd"
+arch = "x86"
 family = "AVX-512"
 name = "CD"
 group = "simd"
@@ -369,6 +428,7 @@ desc = "AVX-512 conflict detection"
 
 [[feature]]
 raw = "avx512bw"
+arch = "x86"
 family = "AVX-512"
 name = "BW"
 group = "simd"
@@ -376,6 +436,7 @@ desc = "AVX-512 byte and word instructions"
 
 [[feature]]
 raw = "avx512dq"
+arch = "x86"
 family = "AVX-512"
 name = "DQ"
 group = "simd"
@@ -383,6 +444,7 @@ desc = "AVX-512 doubleword and quadword instructions"
 
 [[feature]]
 raw = "avx512vl"
+arch = "x86"
 family = "AVX-512"
 name = "VL"
 group = "simd"
@@ -390,6 +452,7 @@ desc = "AVX-512 on 128- and 256-bit registers"
 
 [[feature]]
 raw = "avx512_vnni"
+arch = "x86"
 family = "AVX-512"
 name = "VNNI"
 group = "simd"
@@ -397,6 +460,7 @@ desc = "AVX-512 vector neural-network instructions"
 
 [[feature]]
 raw = "avx512_bf16"
+arch = "x86"
 family = "AVX-512"
 name = "BF16"
 group = "simd"
@@ -404,6 +468,7 @@ desc = "AVX-512 BFloat16 instructions"
 
 [[feature]]
 raw = "avx512_fp16"
+arch = "x86"
 family = "AVX-512"
 name = "FP16"
 group = "simd"
@@ -411,6 +476,7 @@ desc = "AVX-512 half-precision instructions"
 
 [[feature]]
 raw = "amx_tile"
+arch = "x86"
 family = "AMX"
 name = "TILE"
 group = "simd"
@@ -418,6 +484,7 @@ desc = "Advanced Matrix Extensions tile registers"
 
 [[feature]]
 raw = "amx_bf16"
+arch = "x86"
 family = "AMX"
 name = "BF16"
 group = "simd"
@@ -425,6 +492,7 @@ desc = "Advanced Matrix Extensions BFloat16"
 
 [[feature]]
 raw = "amx_int8"
+arch = "x86"
 family = "AMX"
 name = "INT8"
 group = "simd"
@@ -432,72 +500,84 @@ desc = "Advanced Matrix Extensions int8"
 
 [[feature]]
 raw = "pclmulqdq"
+arch = "x86"
 name = "PCLMUL"
 group = "crypto"
 desc = "Carry-less multiply, used by AES-GCM"
 
 [[feature]]
 raw = "vaes"
+arch = "x86"
 name = "VAES"
 group = "crypto"
 desc = "Vector AES"
 
 [[feature]]
 raw = "vpclmulqdq"
+arch = "x86"
 name = "VPCLMUL"
 group = "crypto"
 desc = "Vector carry-less multiply"
 
 [[feature]]
 raw = "sha_ni"
+arch = "x86"
 name = "SHA-NI"
 group = "crypto"
 desc = "SHA-1 and SHA-256 instructions"
 
 [[feature]]
 raw = "rdrand"
+arch = "x86"
 name = "RDRAND"
 group = "crypto"
 desc = "Hardware random number generator"
 
 [[feature]]
 raw = "rdseed"
+arch = "x86"
 name = "RDSEED"
 group = "crypto"
 desc = "Hardware entropy source"
 
 [[feature]]
 raw = "vmx"
+arch = "x86"
 name = "VT-x"
 group = "virtualization"
 desc = "Intel hardware virtualization"
 
 [[feature]]
 raw = "svm"
+arch = "x86"
 name = "AMD-V"
 group = "virtualization"
 desc = "AMD hardware virtualization"
 
 [[feature]]
 raw = "ibt"
+arch = "x86"
 name = "IBT"
 group = "security"
 desc = "Indirect branch tracking"
 
 [[feature]]
 raw = "user_shstk"
+arch = "x86"
 name = "CET-SS"
 group = "security"
 desc = "Shadow stacks for user space"
 
 [[feature]]
 raw = "smep"
+arch = "x86"
 name = "SMEP"
 group = "security"
 desc = "Supervisor mode execution prevention"
 
 [[feature]]
 raw = "smap"
+arch = "x86"
 name = "SMAP"
 group = "security"
 desc = "Supervisor mode access prevention"

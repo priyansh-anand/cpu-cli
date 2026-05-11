@@ -2,11 +2,20 @@
 
 use crate::model::FeatureGroup;
 
+/// Instruction-set family a feature flag belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Arch {
+    Arm,
+    X86,
+}
+
 pub struct FeatureDef {
     pub raw: &'static str,
     pub name: &'static str,
     /// Display family, e.g. `AVX-512` for `avx512f`.
     pub family: Option<&'static str>,
+    /// `None` when the flag means the same thing on every architecture.
+    pub arch: Option<Arch>,
     pub group: FeatureGroup,
     pub desc: &'static str,
 }

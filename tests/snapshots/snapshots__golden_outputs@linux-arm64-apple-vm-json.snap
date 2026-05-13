@@ -74,6 +74,10 @@ expression: "render(&cpu, mode, false)"
             "value": 1,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 4,
             "origin": "derived"
@@ -86,6 +90,10 @@ expression: "render(&cpu, mode, false)"
             "value": 1,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 4,
             "origin": "derived"
@@ -95,6 +103,10 @@ expression: "render(&cpu, mode, false)"
           "level": 2,
           "kind": "unified",
           "shared_by": {
+            "value": 4,
+            "origin": "derived"
+          },
+          "cores": {
             "value": 4,
             "origin": "derived"
           },

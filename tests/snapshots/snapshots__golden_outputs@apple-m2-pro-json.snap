@@ -72,6 +72,10 @@ expression: "render(&cpu, mode, false)"
             "value": 1,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 8,
             "origin": "derived"
@@ -86,6 +90,10 @@ expression: "render(&cpu, mode, false)"
             "from": "sysctl:hw.perflevel0.l1dcachesize"
           },
           "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
             "value": 1,
             "origin": "derived"
           },
@@ -106,6 +114,10 @@ expression: "render(&cpu, mode, false)"
             "value": 4,
             "origin": "detected",
             "from": "sysctl:hw.perflevel0.cpusperl2"
+          },
+          "cores": {
+            "value": 4,
+            "origin": "derived"
           },
           "instances": {
             "value": 2,
@@ -144,6 +156,10 @@ expression: "render(&cpu, mode, false)"
             "value": 1,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 4,
             "origin": "derived"
@@ -158,6 +174,10 @@ expression: "render(&cpu, mode, false)"
             "from": "sysctl:hw.perflevel1.l1dcachesize"
           },
           "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
             "value": 1,
             "origin": "derived"
           },
@@ -178,6 +198,10 @@ expression: "render(&cpu, mode, false)"
             "value": 4,
             "origin": "detected",
             "from": "sysctl:hw.perflevel1.cpusperl2"
+          },
+          "cores": {
+            "value": 4,
+            "origin": "derived"
           },
           "instances": {
             "value": 1,

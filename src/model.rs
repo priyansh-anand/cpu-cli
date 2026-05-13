@@ -201,6 +201,9 @@ pub struct Cache {
     /// Logical CPUs sharing one instance.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shared_by: F<u32>,
+    /// Physical cores sharing one instance, when known.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cores: F<u32>,
     /// How many instances exist in this cluster.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instances: F<u32>,

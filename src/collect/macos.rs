@@ -174,6 +174,8 @@ fn perflevel(r: &mut Reader, index: u32, levels: u32) -> Cluster {
     let threads = r.count(&key("logicalcpu"));
     let per_l2 = r.count(&key("cpusperl2"));
     let per_core = ratio(&threads, &cores);
+    // Without SMT every CPU is a core, so the CPUs sharing a cache are also its cores.
+    let no_smt = per_core.as_ref().is_some_and(|f| f.value == 1);
     let mut caches = Vec::new();
     for (leaf, level, cache_kind, shared_by) in [
         ("l1icachesize", 1, CacheKind::Instruction, &per_core),
@@ -188,6 +190,11 @@ fn perflevel(r: &mut Reader, index: u32, levels: u32) -> Cluster {
             kind: cache_kind,
             size: Some(size),
             shared_by: shared_by.clone(),
+            cores: if no_smt {
+                shared_by.as_ref().map(|f| Fact::derived(f.value))
+            } else {
+                None
+            },
             instances: ratio(&threads, shared_by),
         });
     }

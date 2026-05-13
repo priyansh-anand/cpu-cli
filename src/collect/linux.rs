@@ -162,7 +162,10 @@ fn cpu_topology(r: &mut Reader, cpus: &[u32]) -> BTreeMap<u32, CpuTopo> {
             let base = format!("{CPU_DIR}/cpu{cpu}/topology");
             let topo = CpuTopo {
                 package: r.number(&format!("{base}/physical_package_id")),
-                siblings: r.cpu_list(&format!("{base}/thread_siblings_list")),
+                // core_cpus_list is the newer name; some kernels only have one of them.
+                siblings: r
+                    .cpu_list(&format!("{base}/thread_siblings_list"))
+                    .or_else(|| r.cpu_list(&format!("{base}/core_cpus_list"))),
             };
             (cpu, topo)
         })
@@ -397,7 +400,7 @@ fn clusters(
         return (Vec::new(), Vec::new());
     }
     let groups = groups(r, cpus, info);
-    let (caches, shared) = place(cache_instances(r, cpus), &groups);
+    let (caches, shared) = place(cache_instances(r, cpus, topo), &groups);
     let clusters = groups
         .into_iter()
         .zip(caches)
@@ -508,9 +511,11 @@ struct Instance {
     kind: CacheKind,
     size: F<Bytes>,
     cpus: Vec<u32>,
+    /// Physical cores among `cpus`, when every one of them reported its siblings.
+    cores: Option<usize>,
 }
 
-fn cache_instances(r: &mut Reader, cpus: &[u32]) -> Vec<Instance> {
+fn cache_instances(r: &mut Reader, cpus: &[u32], topo: &BTreeMap<u32, CpuTopo>) -> Vec<Instance> {
     let online: BTreeSet<u32> = cpus.iter().copied().collect();
     let mut seen = BTreeSet::new();
     let mut out = Vec::new();
@@ -548,11 +553,13 @@ fn cache_instances(r: &mut Reader, cpus: &[u32]) -> Vec<Instance> {
                 continue;
             }
             let size = r.size(&format!("{base}/size"));
+            let cores = sharer_cores(&sharers, topo);
             out.push(Instance {
                 level,
                 kind,
                 size,
                 cpus: sharers,
+                cores,
             });
         }
     }
@@ -587,20 +594,47 @@ fn place(instances: Vec<Instance>, groups: &[Group]) -> (Vec<Vec<Cache>>, Vec<Ca
     )
 }
 
+/// Physical cores among `cpus`: their distinct sibling sets, when every one is known.
+fn sharer_cores(cpus: &[u32], topo: &BTreeMap<u32, CpuTopo>) -> Option<usize> {
+    let sets: Option<BTreeSet<&Vec<u32>>> = cpus
+        .iter()
+        .map(|c| topo.get(c)?.siblings.as_ref())
+        .collect();
+    sets.map(|s| s.len())
+}
+
+fn same_shape(a: &Instance, b: &Instance) -> bool {
+    a.size.as_ref().map(|f| f.value) == b.size.as_ref().map(|f| f.value)
+        && a.cpus.len() == b.cpus.len()
+        && a.cores == b.cores
+}
+
+/// One entry per distinct shape of cache. Instances of one level can differ (an X3D chiplet's
+/// larger L3, Meteor Lake's two-core low-power module, a half-offline L3), so the first instance
+/// is never taken to stand for the rest.
 fn summarize(buckets: Buckets) -> Vec<Cache> {
-    buckets
-        .into_iter()
-        .map(|((level, kind), instances)| {
-            let first = &instances[0];
-            Cache {
-                level,
-                kind,
-                size: first.size.clone(),
-                shared_by: count(first.cpus.len()),
-                instances: count(instances.len()),
+    let mut caches = Vec::new();
+    for ((level, kind), instances) in buckets {
+        let mut shapes: Vec<(&Instance, usize)> = Vec::new();
+        for instance in &instances {
+            match shapes
+                .iter_mut()
+                .find(|(shape, _)| same_shape(shape, instance))
+            {
+                Some((_, n)) => *n += 1,
+                None => shapes.push((instance, 1)),
             }
-        })
-        .collect()
+        }
+        caches.extend(shapes.into_iter().map(|(first, n)| Cache {
+            level,
+            kind,
+            size: first.size.clone(),
+            shared_by: count(first.cpus.len()),
+            cores: first.cores.and_then(count),
+            instances: count(n),
+        }));
+    }
+    caches
 }
 
 /// A cpufreq value (kHz on disk) as hertz. Values outside 100 MHz to 10 GHz are rejected.
@@ -1106,5 +1140,86 @@ mod tests {
             from.contains(&"/sys/devices/system/cpu/cpu0/cpufreq/base_frequency"),
             "{from:?}"
         );
+    }
+
+    /// The 4-CPU ARM machine with one level-3 cache per `(cpu list, size)`.
+    fn with_l3(instances: &[(&str, &str)]) -> BTreeMap<String, String> {
+        let mut map = arm("0x41", "0xd0c", &[]);
+        for (cpus, size) in instances {
+            for cpu in crate::collect::sysfs::parse_cpu_list(cpus).unwrap() {
+                let base = format!("/sys/devices/system/cpu/cpu{cpu}/cache/index0");
+                map.insert(format!("{base}/level"), "3".into());
+                map.insert(format!("{base}/type"), "Unified".into());
+                map.insert(format!("{base}/size"), (*size).into());
+                map.insert(format!("{base}/shared_cpu_list"), (*cpus).into());
+            }
+        }
+        map
+    }
+
+    fn l3_shapes(cpu: &Cpu) -> Vec<(Option<Bytes>, Option<u32>, Option<u32>)> {
+        cpu.clusters[0]
+            .caches
+            .iter()
+            .filter(|k| k.level == 3)
+            .map(|k| (value(&k.size), value(&k.shared_by), value(&k.instances)))
+            .collect()
+    }
+
+    #[test]
+    fn caches_of_different_sizes_are_listed_separately() {
+        let cpu = collect(&with_l3(&[("0-1", "98304K"), ("2-3", "32768K")]));
+        assert_eq!(
+            l3_shapes(&cpu),
+            [
+                (Some(Bytes(96 << 20)), Some(2), Some(1)),
+                (Some(Bytes(32 << 20)), Some(2), Some(1))
+            ]
+        );
+    }
+
+    #[test]
+    fn caches_shared_by_different_numbers_of_cpus_are_listed_separately() {
+        let cpu = collect(&with_l3(&[
+            ("0-1", "2048K"),
+            ("2", "2048K"),
+            ("3", "2048K"),
+        ]));
+        assert_eq!(
+            l3_shapes(&cpu),
+            [
+                (Some(Bytes(2 << 20)), Some(2), Some(1)),
+                (Some(Bytes(2 << 20)), Some(1), Some(2))
+            ]
+        );
+    }
+
+    #[test]
+    fn caches_count_the_cores_that_share_them() {
+        // 2 cores x 2 threads; siblings only in core_cpus_list (older or unusual kernels).
+        let mut map = files(&[("/sys/devices/system/cpu/online", "0-3")]);
+        for cpu in 0..4u32 {
+            let pair = if cpu < 2 { "0-1" } else { "2-3" };
+            let base = format!("/sys/devices/system/cpu/cpu{cpu}");
+            map.insert(format!("{base}/topology/core_cpus_list"), pair.into());
+            for (index, level, kind, size, shared) in [
+                (0, "1", "Data", "32K", pair),
+                (1, "3", "Unified", "16384K", "0-3"),
+            ] {
+                let cache = format!("{base}/cache/index{index}");
+                map.insert(format!("{cache}/level"), level.into());
+                map.insert(format!("{cache}/type"), kind.into());
+                map.insert(format!("{cache}/size"), size.into());
+                map.insert(format!("{cache}/shared_cpu_list"), shared.into());
+            }
+        }
+        let cpu = collect(&map);
+        assert_eq!(value(&cpu.topology.physical_cores), Some(2));
+        let cores: Vec<(u8, Option<u32>, Option<u32>)> = cpu.clusters[0]
+            .caches
+            .iter()
+            .map(|k| (k.level, value(&k.shared_by), value(&k.cores)))
+            .collect();
+        assert_eq!(cores, [(1, Some(2), Some(1)), (3, Some(4), Some(2))]);
     }
 }

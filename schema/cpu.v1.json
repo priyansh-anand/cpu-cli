@@ -231,6 +231,9 @@
         },
         "instances": {
           "$ref": "#/$defs/fact_uint"
+        },
+        "cores": {
+          "$ref": "#/$defs/fact_uint"
         }
       }
     },

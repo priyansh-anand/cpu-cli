@@ -40,17 +40,32 @@ fn counts_add_up() {
             );
         }
         for cluster in &cpu.clusters {
+            // Summed over every shape of a cache level, the CPUs covered must be the cluster's
+            // threads: one instance must never stand in for different ones.
+            let mut covered: std::collections::BTreeMap<
+                (u8, cpu_cli::model::CacheKind),
+                Option<u32>,
+            > = std::collections::BTreeMap::new();
             for cache in &cluster.caches {
-                if let (Some(s), Some(i), Some(t)) =
-                    (&cache.shared_by, &cache.instances, &cluster.threads)
-                {
-                    assert_eq!(
-                        s.value * i.value,
-                        t.value,
-                        "{name}: L{} of {}: shared_by × instances != threads",
-                        cache.level,
-                        cluster.label()
-                    );
+                let cpus = cache
+                    .shared_by
+                    .as_ref()
+                    .zip(cache.instances.as_ref())
+                    .map(|(s, i)| s.value * i.value);
+                let entry = covered.entry((cache.level, cache.kind)).or_insert(Some(0));
+                *entry = entry.zip(cpus).map(|(a, b)| a + b);
+            }
+            if let Some(t) = &cluster.threads {
+                for ((level, _), sum) in covered {
+                    if let Some(sum) = sum {
+                        assert_eq!(
+                            sum,
+                            t.value,
+                            "{name}: L{level} of {}: instances cover {sum} CPUs, cluster has {}",
+                            cluster.label(),
+                            t.value
+                        );
+                    }
                 }
             }
         }

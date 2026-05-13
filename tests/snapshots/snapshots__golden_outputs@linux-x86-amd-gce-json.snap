@@ -116,6 +116,10 @@ expression: "render(&cpu, mode, false)"
             "value": 2,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 8,
             "origin": "derived"
@@ -131,6 +135,10 @@ expression: "render(&cpu, mode, false)"
           },
           "shared_by": {
             "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
             "origin": "derived"
           },
           "instances": {
@@ -150,6 +158,10 @@ expression: "render(&cpu, mode, false)"
             "value": 2,
             "origin": "derived"
           },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
           "instances": {
             "value": 8,
             "origin": "derived"
@@ -165,6 +177,10 @@ expression: "render(&cpu, mode, false)"
           },
           "shared_by": {
             "value": 8,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 4,
             "origin": "derived"
           },
           "instances": {

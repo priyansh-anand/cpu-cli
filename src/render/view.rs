@@ -332,9 +332,10 @@ fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                 .map(|c| {
                     c.caches
                         .iter()
-                        .find(|k| k.level == level && k.kind == kind)
-                        .map(|k| cache_cell(k, c, g))
-                        .unwrap_or_default()
+                        .filter(|k| k.level == level && k.kind == kind && k.size.is_some())
+                        .map(|k| cache_cell(k, g))
+                        .collect::<Vec<_>>()
+                        .join(" + ")
                 })
                 .collect();
             (
@@ -385,7 +386,10 @@ fn shared_cell(cache: &Cache, cpu: &Cpu, g: &Glyphs) -> String {
             Some(p) => text.push_str(&format!(" shared by all {} cores", p.value)),
             None => text.push_str(" shared by all cores"),
         },
-        Some(n) => text.push_str(&format!(" / {n} CPUs")),
+        Some(n) => match &cache.cores {
+            Some(c) => text.push_str(&format!(" / {} cores", c.value)),
+            None => text.push_str(&format!(" / {n} CPUs")),
+        },
         None => {}
     }
     if let Some(n) = cache.instances.as_ref().filter(|n| n.value > 1) {
@@ -394,25 +398,23 @@ fn shared_cell(cache: &Cache, cpu: &Cpu, g: &Glyphs) -> String {
     text
 }
 
-/// `192 KiB / core`, `16 MiB / 4 cores`, or `16 MiB / 4 cores ×2` when the cluster has several.
-fn cache_cell(cache: &Cache, cluster: &Cluster, g: &Glyphs) -> String {
+/// `192 KiB / core`, `16 MiB / 4 cores ×2`, or `16 MiB / 8 CPUs` when the core count is unknown.
+fn cache_cell(cache: &Cache, g: &Glyphs) -> String {
     let Some(size) = &cache.size else {
         return String::new();
     };
     let mut text = size.value.to_string();
-    if let Some(shared) = &cache.shared_by {
-        let smt = match (&cluster.cores, &cluster.threads) {
-            (Some(c), Some(t)) if c.value > 0 && t.value % c.value == 0 => t.value / c.value,
-            _ => 1,
-        };
-        let cores = (shared.value / smt).max(1);
-        if cores == 1 {
-            text.push_str(" / core");
-        } else {
-            text.push_str(&format!(" / {cores} cores"));
-            if let Some(n) = cache.instances.as_ref().filter(|n| n.value > 1) {
-                text.push_str(&format!(" {}{}", g.times, n.value));
-            }
+    let (n, unit) = match (&cache.cores, &cache.shared_by) {
+        (Some(cores), _) => (cores.value, "core"),
+        (None, Some(cpus)) => (cpus.value, "CPU"),
+        (None, None) => return text,
+    };
+    if n == 1 {
+        text.push_str(&format!(" / {unit}"));
+    } else {
+        text.push_str(&format!(" / {n} {unit}s"));
+        if let Some(i) = cache.instances.as_ref().filter(|i| i.value > 1) {
+            text.push_str(&format!(" {}{}", g.times, i.value));
         }
     }
     text
@@ -652,5 +654,45 @@ mod tests {
         assert_eq!(format_cpu_list(&[0, 1, 2, 3, 8, 10, 11]), "0-3,8,10-11");
         assert_eq!(format_cpu_list(&[5]), "5");
         assert_eq!(format_cpu_list(&[]), "");
+    }
+
+    fn one_cluster_with(caches: Vec<Cache>) -> Cpu {
+        Cpu {
+            clusters: vec![Cluster {
+                caches,
+                ..Cluster::default()
+            }],
+            ..Cpu::default()
+        }
+    }
+
+    fn l3(size_mib: u64, shared_by: u32, cores: Option<u32>, instances: u32) -> Cache {
+        Cache {
+            level: 3,
+            kind: CacheKind::Unified,
+            size: Some(Fact::derived(crate::units::Bytes(size_mib << 20))),
+            shared_by: Some(Fact::derived(shared_by)),
+            cores: cores.map(Fact::derived),
+            instances: Some(Fact::derived(instances)),
+        }
+    }
+
+    #[test]
+    fn differing_cache_instances_are_joined() {
+        let cpu = one_cluster_with(vec![l3(96, 16, Some(8), 1), l3(32, 16, Some(8), 1)]);
+        let s = build(&cpu, &UNICODE);
+        assert_eq!(
+            grid(&s).rows[0].cells,
+            ["96 MiB / 8 cores + 32 MiB / 8 cores"]
+        );
+    }
+
+    #[test]
+    fn caches_without_a_core_count_say_cpus() {
+        let cpu = one_cluster_with(vec![l3(16, 8, None, 2)]);
+        assert_eq!(
+            grid(&build(&cpu, &UNICODE)).rows[0].cells,
+            ["16 MiB / 8 CPUs ×2"]
+        );
     }
 }

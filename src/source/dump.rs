@@ -37,6 +37,7 @@ pub const LINUX_FILES: &[&str] = &[
     "/sys/devices/system/cpu/possible",
     "/sys/devices/cpu_core/cpus",
     "/sys/devices/cpu_atom/cpus",
+    "/sys/devices/cpu_lowpower/cpus",
     "/sys/class/dmi/id/sys_vendor",
     "/sys/class/dmi/id/product_name",
 ];

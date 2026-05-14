@@ -49,9 +49,23 @@ pub fn collect(fs: &dyn Fs) -> Cpu {
     let info = r.cpuinfo();
     let cpus = r.online_cpus();
     let topo = cpu_topology(&mut r, &cpus);
-    let identity = identity(&mut r, &info);
+    let mut identity = identity(&mut r, &info);
     let topology = topology(&mut r, &cpus, &topo);
     let (clusters, shared_caches) = clusters(&mut r, &cpus, &info, &topo);
+    // CPU 0 is often a little core, so on mixed ARM chips name every core type, fastest first.
+    if !is_x86(&info)
+        && clusters.len() > 1
+        && !identity
+            .name
+            .as_ref()
+            .is_some_and(|n| matches!(n.origin, Origin::Detected(_)))
+    {
+        let names: Option<Vec<&str>> = clusters
+            .iter()
+            .map(|c| c.name.as_ref().map(|n| n.value.as_str()))
+            .collect();
+        identity.name = names.map(|names| database(&names.join(" + ")));
+    }
     let arch = if is_x86(&info) { Arch::X86 } else { Arch::Arm };
     let features = features::group(flags(&info), arch);
     Cpu {
@@ -437,41 +451,60 @@ fn pmu_cpus(r: &mut Reader, pmu: &str, online: &BTreeSet<u32>) -> Vec<u32> {
 
 fn groups(r: &mut Reader, cpus: &[u32], info: &[Block]) -> Vec<Group> {
     let online: BTreeSet<u32> = cpus.iter().copied().collect();
-    // Intel hybrid: the kernel lists each core type's CPUs under its PMU.
-    let (performance, efficiency) = (
-        pmu_cpus(r, "cpu_core", &online),
-        pmu_cpus(r, "cpu_atom", &online),
-    );
+    // Intel hybrid: the kernel lists each core type's CPUs under its PMU; cpu_lowpower holds the
+    // low-power E-cores of Meteor Lake and later.
+    let performance = pmu_cpus(r, "cpu_core", &online);
+    let efficiency = pmu_cpus(r, "cpu_atom", &online);
     if !performance.is_empty() && !efficiency.is_empty() {
-        return vec![
-            Group {
-                kind: CoreKind::Performance,
-                name: None,
-                cpus: performance,
-            },
-            Group {
-                kind: CoreKind::Efficiency,
-                name: None,
-                cpus: efficiency,
-            },
-        ];
+        let low_power = pmu_cpus(r, "cpu_lowpower", &online);
+        let mut groups = Vec::new();
+        let mut listed = BTreeSet::new();
+        for (kind, name, members) in [
+            (CoreKind::Performance, None, performance),
+            (CoreKind::Efficiency, None, efficiency),
+            (CoreKind::Efficiency, Some("Low-power"), low_power),
+        ] {
+            // A CPU belongs to one core type, even if two PMU lists name it.
+            let members: Vec<u32> = members.into_iter().filter(|c| listed.insert(*c)).collect();
+            if !members.is_empty() {
+                groups.push(Group {
+                    kind,
+                    name: name.map(|n| Fact::derived(n.to_string())),
+                    cpus: members,
+                });
+            }
+        }
+        // Never drop a CPU: anything no PMU lists (a PMU this kernel knows and we don't) gets
+        // its own group rather than vanishing from the counts.
+        let rest: Vec<u32> = cpus
+            .iter()
+            .copied()
+            .filter(|c| !listed.contains(c))
+            .collect();
+        if !rest.is_empty() {
+            groups.push(Group {
+                kind: CoreKind::Uniform,
+                name: Some(Fact::derived("Other".to_string())),
+                cpus: rest,
+            });
+        }
+        return groups;
     }
-    // ARM big.LITTLE: one group per (capacity, core part), highest capacity first.
-    let implementer = info
-        .first()
-        .and_then(|b| b.get("CPU implementer"))
-        .and_then(|v| parse_hex(v));
-    let mut by_type: BTreeMap<(Reverse<u32>, u32), Vec<u32>> = BTreeMap::new();
+    // ARM big.LITTLE: one group per (capacity, core), highest capacity first.
+    let mut by_type: BTreeMap<(Reverse<u32>, u32, u32), Vec<u32>> = BTreeMap::new();
     for &cpu in cpus {
         let capacity = r
             .number::<u32>(&format!("{CPU_DIR}/cpu{cpu}/cpu_capacity"))
             .unwrap_or(0);
-        let part = block_for(info, cpu)
-            .and_then(|b| b.get("CPU part"))
-            .and_then(|p| parse_hex(p))
-            .unwrap_or(0);
+        let block = block_for(info, cpu);
+        let hex = |key: &str| {
+            block
+                .and_then(|b| b.get(key))
+                .and_then(|v| parse_hex(v))
+                .unwrap_or(0)
+        };
         by_type
-            .entry((Reverse(capacity), part))
+            .entry((Reverse(capacity), hex("CPU implementer"), hex("CPU part")))
             .or_default()
             .push(cpu);
     }
@@ -482,19 +515,24 @@ fn groups(r: &mut Reader, cpus: &[u32], info: &[Block]) -> Vec<Group> {
             cpus: cpus.to_vec(),
         }];
     }
+    // Only capacity says which cores are faster; without a difference, don't guess P and E.
+    let ranked = by_type
+        .keys()
+        .map(|(capacity, _, _)| capacity.0)
+        .collect::<BTreeSet<_>>()
+        .len()
+        > 1;
     let last = by_type.len() - 1;
     by_type
         .into_iter()
         .enumerate()
-        .map(|(i, ((_, part), cpus))| Group {
-            kind: if i == last {
-                CoreKind::Efficiency
-            } else {
-                CoreKind::Performance
+        .map(|(i, ((_, implementer, part), cpus))| Group {
+            kind: match (ranked, i == last) {
+                (false, _) => CoreKind::Uniform,
+                (true, true) => CoreKind::Efficiency,
+                (true, false) => CoreKind::Performance,
             },
-            name: implementer
-                .and_then(|imp| db::arm_part(imp, part))
-                .map(database),
+            name: db::arm_part(implementer, part).map(database),
             cpus,
         })
         .collect()
@@ -1221,5 +1259,124 @@ mod tests {
             .map(|k| (k.level, value(&k.shared_by), value(&k.cores)))
             .collect();
         assert_eq!(cores, [(1, Some(2), Some(1)), (3, Some(4), Some(2))]);
+    }
+
+    /// 4 Cortex-A76 (CPUs 0-3) and 4 Cortex-A55 (4-7) with the given `cpu_capacity` values.
+    fn big_little(big: &str, little: &str) -> BTreeMap<String, String> {
+        let block = |n: u32, part: &str| {
+            format!(
+                "processor\t: {n}\nFeatures\t: fp asimd\nCPU implementer\t: 0x41\nCPU architecture: 8\nCPU part\t: {part}\n\n"
+            )
+        };
+        let mut map = files(&[("/sys/devices/system/cpu/online", "0-7")]);
+        let cpuinfo: String = (0..8)
+            .map(|n| block(n, if n < 4 { "0xd05" } else { "0xd0b" }))
+            .collect();
+        map.insert("/proc/cpuinfo".into(), cpuinfo);
+        for cpu in 0..8u32 {
+            let capacity = if cpu < 4 { little } else { big };
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/cpu_capacity"),
+                capacity.into(),
+            );
+            map.insert(
+                format!("/sys/devices/system/cpu/cpu{cpu}/topology/thread_siblings_list"),
+                cpu.to_string(),
+            );
+        }
+        map
+    }
+
+    #[test]
+    fn big_little_name_lists_every_core_type_fastest_first() {
+        // CPU 0 is a little core here, as on most boards.
+        let cpu = collect(&big_little("1024", "446"));
+        assert_eq!(
+            value(&cpu.identity.name).as_deref(),
+            Some("Cortex-A76 + Cortex-A55")
+        );
+    }
+
+    #[test]
+    fn equal_capacity_does_not_invent_performance_and_efficiency() {
+        let cpu = collect(&big_little("1024", "1024"));
+        let kinds: Vec<CoreKind> = cpu.clusters.iter().map(|c| c.kind).collect();
+        assert_eq!(kinds, [CoreKind::Uniform, CoreKind::Uniform]);
+        let names: Vec<Option<String>> = cpu.clusters.iter().map(|c| value(&c.name)).collect();
+        assert_eq!(
+            names,
+            [
+                Some("Cortex-A55".to_string()),
+                Some("Cortex-A76".to_string())
+            ]
+        );
+    }
+
+    /// Intel hybrid with per-CPU private L1s and an L3 on the P- and E-cores; `pmus` lists
+    /// each hybrid PMU and its CPUs.
+    fn hybrid(online: &str, pmus: &[(&str, &str)]) -> BTreeMap<String, String> {
+        let mut map = files(&[
+            (
+                "/proc/cpuinfo",
+                "processor\t: 0\nvendor_id\t: GenuineIntel\nflags\t: fpu lm\n\n",
+            ),
+            ("/sys/devices/system/cpu/online", online),
+        ]);
+        for (pmu, cpus) in pmus {
+            map.insert(format!("/sys/devices/{pmu}/cpus"), (*cpus).into());
+        }
+        for cpu in crate::collect::sysfs::parse_cpu_list(online).unwrap() {
+            let base = format!("/sys/devices/system/cpu/cpu{cpu}");
+            map.insert(
+                format!("{base}/topology/thread_siblings_list"),
+                cpu.to_string(),
+            );
+            map.insert(format!("{base}/cache/index0/level"), "1".into());
+            map.insert(format!("{base}/cache/index0/type"), "Data".into());
+            map.insert(format!("{base}/cache/index0/size"), "48K".into());
+            map.insert(
+                format!("{base}/cache/index0/shared_cpu_list"),
+                cpu.to_string(),
+            );
+        }
+        map
+    }
+
+    #[test]
+    fn low_power_cores_get_their_own_core_type() {
+        let cpu = collect(&hybrid(
+            "0-5",
+            &[
+                ("cpu_core", "0-1"),
+                ("cpu_atom", "2-3"),
+                ("cpu_lowpower", "4-5"),
+            ],
+        ));
+        let shown: Vec<(CoreKind, String, Option<u32>)> = cpu
+            .clusters
+            .iter()
+            .map(|c| (c.kind, c.label().to_string(), value(&c.threads)))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                (CoreKind::Performance, "Performance".to_string(), Some(2)),
+                (CoreKind::Efficiency, "Efficiency".to_string(), Some(2)),
+                (CoreKind::Efficiency, "Low-power".to_string(), Some(2)),
+            ]
+        );
+        assert!(
+            cpu.shared_caches.is_empty(),
+            "private L1s are not shared: {:?}",
+            cpu.shared_caches
+        );
+    }
+
+    #[test]
+    fn cpus_in_no_pmu_list_are_not_dropped() {
+        let cpu = collect(&hybrid("0-4", &[("cpu_core", "0-1"), ("cpu_atom", "2-3")]));
+        let threads: u32 = cpu.clusters.iter().filter_map(|c| value(&c.threads)).sum();
+        assert_eq!(threads, 5, "every online CPU belongs to a core type");
+        assert!(cpu.shared_caches.is_empty(), "{:?}", cpu.shared_caches);
     }
 }

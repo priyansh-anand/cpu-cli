@@ -129,6 +129,10 @@ fn boxed_lines_have_equal_width() {
         let text = render(&common::load(&path), Mode::Boxed, false);
         let widths: BTreeSet<usize> = text.lines().map(UnicodeWidthStr::width).collect();
         assert_eq!(widths.len(), 1, "{name}:\n{text}");
+        assert!(
+            widths.iter().all(|w| *w <= 80),
+            "{name}: wider than an 80-column terminal:\n{text}"
+        );
     }
 }
 

@@ -21,7 +21,7 @@ expression: "render(&cpu, mode, false)"
       "from": "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"
     },
     "hypervisor": {
-      "value": "Apple Virtualization Generic Platform",
+      "value": "Apple Virtualization",
       "origin": "detected",
       "from": "/sys/class/dmi/id/product_name"
     }

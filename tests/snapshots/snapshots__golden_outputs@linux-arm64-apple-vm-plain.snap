@@ -5,7 +5,7 @@ expression: "render(&cpu, mode, false)"
 Identity
   Vendor        Apple
   Architecture  aarch64
-  Hypervisor    Apple Virtualization Generic Platform, topology as reported by guest
+  Hypervisor    Apple Virtualization, topology as reported by guest
 
 Topology
   Cores  4 physical, 4 logical, no SMT

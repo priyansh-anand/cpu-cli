@@ -214,6 +214,7 @@ mod tests {
             "sparse-mac",
             "linux-x86-intel-hybrid",
             "linux-x86-amd-gce",
+            "linux-arm64-apple-vm",
         ] {
             let text = render(&build(&fixture(name), &UNICODE), false);
             let widths: std::collections::BTreeSet<usize> = text.lines().map(width).collect();

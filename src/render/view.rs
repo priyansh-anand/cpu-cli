@@ -192,8 +192,13 @@ fn identity(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
         Some(isa) => format!("{arch} ({isa})"),
         None => arch,
     });
-    let hypervisor =
-        val(&id.hypervisor).map(|h| format!("{h}{}topology as reported by guest", g.sep));
+    let hypervisor = val(&id.hypervisor).map(|h| {
+        wrap(
+            &[h.as_str(), "topology as reported by guest"],
+            g.sep,
+            WRAP_WIDTH,
+        )
+    });
     pairs(
         "Identity",
         vec![
@@ -201,7 +206,7 @@ fn identity(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
             ("Vendor", one(val(&id.vendor))),
             ("Architecture", one(arch)),
             ("Microcode", one(val(&id.microcode))),
-            ("Hypervisor", one(hypervisor)),
+            ("Hypervisor", hypervisor),
         ],
     )
 }
@@ -241,7 +246,13 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
             .iter()
             .map(|n| format_cpu_list(&n.cpus))
             .collect();
-        format!("{} nodes: {}", t.numa_nodes.len(), lists.join(g.set_sep))
+        let refs: Vec<&str> = lists.iter().map(String::as_str).collect();
+        let prefix = format!("{} nodes: ", t.numa_nodes.len());
+        let mut lines = wrap(&refs, g.set_sep, WRAP_WIDTH - width(&prefix));
+        if let Some(first) = lines.first_mut() {
+            first.insert_str(0, &prefix);
+        }
+        lines
     });
     pairs(
         "Topology",
@@ -252,7 +263,7 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                 (!cores.is_empty()).then(|| vec![cores.join(g.sep)]),
             ),
             ("Clusters", one(clusters)),
-            ("NUMA", one(numa)),
+            ("NUMA", numa),
         ],
     )
 }
@@ -694,5 +705,31 @@ mod tests {
             grid(&build(&cpu, &UNICODE)).rows[0].cells,
             ["16 MiB / 8 CPUs ×2"]
         );
+    }
+
+    #[test]
+    fn long_hypervisor_and_numa_rows_wrap() {
+        let mut cpu = Cpu::default();
+        cpu.identity.hypervisor = Some(Fact::derived(
+            "Some Very Long Virtual Platform Name Here".to_string(),
+        ));
+        cpu.topology.numa_nodes = (0..8)
+            .map(|id| crate::model::NumaNode {
+                id,
+                cpus: (id * 32..id * 32 + 16)
+                    .chain(id * 32 + 256..id * 32 + 272)
+                    .collect(),
+            })
+            .collect();
+        let s = build(&cpu, &UNICODE);
+        for label in ["Hypervisor", "NUMA"] {
+            let lines = &row(&s, label).lines;
+            assert!(lines.len() > 1, "{label} should wrap: {lines:?}");
+            assert!(
+                lines.iter().all(|l| width(l) <= WRAP_WIDTH),
+                "{label}: {lines:?}"
+            );
+        }
+        assert!(row(&s, "NUMA").lines[0].starts_with("8 nodes: 0-15,256-271 · "));
     }
 }

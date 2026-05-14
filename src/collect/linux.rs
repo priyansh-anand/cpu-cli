@@ -21,21 +21,25 @@ const ARCH: &str = "/proc/sys/kernel/arch";
 const DMI_VENDOR: &str = "/sys/class/dmi/id/sys_vendor";
 const DMI_PRODUCT: &str = "/sys/class/dmi/id/product_name";
 
-/// DMI names meaning "virtual machine". Only used on ARM, which has no hypervisor CPU flag.
-const VIRTUAL_PLATFORMS: &[&str] = &[
-    "KVM",
-    "QEMU",
-    "VMware",
-    "VirtualBox",
-    "Virtual Machine",
-    "Xen",
-    "HVM domU",
-    "Google Compute Engine",
-    "Apple Virtualization",
-    "Parallels",
-    "BHYVE",
-    "OpenStack",
-    "Bochs",
+/// Virtual platforms by a substring of their DMI vendor or product name, and the name shown.
+/// DMI's own product name is often a machine type ("Standard PC (Q35 + ICH9, 2009)") or an
+/// instance size ("c5.large"), not the hypervisor, so it is never shown raw when a name is known.
+const HYPERVISORS: &[(&str, &str)] = &[
+    ("Apple Virtualization", "Apple Virtualization"),
+    ("Google Compute Engine", "Google Compute Engine"),
+    ("Amazon EC2", "Amazon EC2 (Nitro)"),
+    ("VMware", "VMware"),
+    ("VirtualBox", "VirtualBox"),
+    ("innotek", "VirtualBox"),
+    ("Parallels", "Parallels"),
+    ("Virtual Machine", "Hyper-V"),
+    ("QEMU", "KVM/QEMU"),
+    ("KVM", "KVM"),
+    ("HVM domU", "Xen"),
+    ("Xen", "Xen"),
+    ("OpenStack", "OpenStack"),
+    ("BHYVE", "bhyve"),
+    ("Bochs", "Bochs"),
 ];
 
 /// One `/proc/cpuinfo` processor block: field name to value.
@@ -313,32 +317,36 @@ fn derived_arch(info: &[Block]) -> F<String> {
         .then(|| Fact::derived("aarch64".to_string()))
 }
 
-/// x86 trusts the `hypervisor` CPU flag; ARM has none, so it recognises virtual-platform DMI
-/// names. The value shown is the DMI product name.
+/// x86 trusts the `hypervisor` CPU flag (bare-metal cloud hosts keep cloud DMI names); ARM has
+/// no such flag, so a known virtual platform in DMI decides, except for bare-metal instances.
 fn hypervisor(r: &mut Reader, info: &[Block]) -> F<String> {
     let vendor = r.text(DMI_VENDOR);
     let product = r.text(DMI_PRODUCT);
+    let known = HYPERVISORS.iter().find_map(|(pattern, name)| {
+        [(&product, DMI_PRODUCT), (&vendor, DMI_VENDOR)]
+            .into_iter()
+            .find(|(field, _)| field.as_deref().is_some_and(|f| f.contains(pattern)))
+            .map(|(_, path)| Fact::detected(name.to_string(), path))
+    });
     let virtual_machine = if is_x86(info) {
         info.first()
             .and_then(|b| b.get("flags"))
             .is_some_and(|f| f.split_whitespace().any(|x| x == "hypervisor"))
     } else {
-        [&vendor, &product].iter().any(|name| {
-            name.as_deref()
-                .is_some_and(|n| VIRTUAL_PLATFORMS.iter().any(|m| n.contains(m)))
-        })
+        known.is_some() && !product.as_deref().is_some_and(|p| p.ends_with(".metal"))
     };
     if !virtual_machine {
         return None;
     }
-    match (product, vendor) {
-        (Some(product), _) => Some(Fact::detected(product, DMI_PRODUCT)),
-        (None, Some(vendor)) => Some(Fact::detected(vendor, DMI_VENDOR)),
-        (None, None) => Some(Fact::detected(
-            "unknown".to_string(),
-            format!("{CPUINFO}:flags"),
-        )),
-    }
+    known
+        .or_else(|| product.map(|p| Fact::detected(p, DMI_PRODUCT)))
+        .or_else(|| vendor.map(|v| Fact::detected(v, DMI_VENDOR)))
+        .or_else(|| {
+            Some(Fact::detected(
+                "unknown".to_string(),
+                format!("{CPUINFO}:flags"),
+            ))
+        })
 }
 
 /// A field of the first cpuinfo block.
@@ -893,7 +901,7 @@ mod tests {
         assert_eq!(value(&cpu.identity.vendor).as_deref(), Some("Apple"));
         assert_eq!(
             value(&cpu.identity.hypervisor).as_deref(),
-            Some("Apple Virtualization Generic Platform")
+            Some("Apple Virtualization")
         );
         assert!(cpu.is_identified(), "identified by its CPU count");
     }
@@ -1378,5 +1386,57 @@ mod tests {
         let threads: u32 = cpu.clusters.iter().filter_map(|c| value(&c.threads)).sum();
         assert_eq!(threads, 5, "every online CPU belongs to a core type");
         assert!(cpu.shared_caches.is_empty(), "{:?}", cpu.shared_caches);
+    }
+
+    #[test]
+    fn hypervisors_are_named_from_dmi() {
+        let named = |x86: bool, vendor: &str, product: &str| {
+            let cpuinfo = if x86 {
+                "processor\t: 0\nvendor_id\t: GenuineIntel\nflags\t: fpu lm hypervisor\n\n"
+            } else {
+                "processor\t: 0\nCPU implementer\t: 0x41\nCPU architecture: 8\nCPU part\t: 0xd40\n\n"
+            };
+            let map = files(&[
+                ("/proc/cpuinfo", cpuinfo),
+                ("/sys/devices/system/cpu/online", "0"),
+                ("/sys/class/dmi/id/sys_vendor", vendor),
+                ("/sys/class/dmi/id/product_name", product),
+            ]);
+            value(&collect(&map).identity.hypervisor)
+        };
+        assert_eq!(
+            named(true, "QEMU", "Standard PC (Q35 + ICH9, 2009)").as_deref(),
+            Some("KVM/QEMU")
+        );
+        assert_eq!(
+            named(true, "Amazon EC2", "c5.large").as_deref(),
+            Some("Amazon EC2 (Nitro)")
+        );
+        assert_eq!(
+            named(true, "Microsoft Corporation", "Virtual Machine").as_deref(),
+            Some("Hyper-V")
+        );
+        assert_eq!(
+            named(true, "VMware, Inc.", "VMware Virtual Platform").as_deref(),
+            Some("VMware")
+        );
+        assert_eq!(
+            named(true, "Google", "Google Compute Engine").as_deref(),
+            Some("Google Compute Engine")
+        );
+        assert_eq!(
+            named(false, "Apple Inc.", "Apple Virtualization Generic Platform").as_deref(),
+            Some("Apple Virtualization")
+        );
+        assert_eq!(
+            named(false, "Amazon EC2", "m7g.large").as_deref(),
+            Some("Amazon EC2 (Nitro)"),
+            "Graviton"
+        );
+        assert_eq!(
+            named(false, "Amazon EC2", "m7g.metal"),
+            None,
+            "bare-metal Graviton is not a VM"
+        );
     }
 }

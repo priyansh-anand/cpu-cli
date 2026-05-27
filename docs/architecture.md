@@ -55,7 +55,7 @@ Every read goes through a small `Reader` that applies **sanity gates**: counts m
 - Core types: Intel hybrid lists P- and E-cores under `/sys/devices/cpu_core/cpus` and `/sys/devices/cpu_atom/cpus`. On ARM, CPUs are grouped by `cpu_capacity` and the `CPU part` from `/proc/cpuinfo`, fastest first, and named from the MIDR table.
 - Caches come from `cpuN/cache/indexM`. An instance whose `shared_cpu_list` spans more than one core type (an Intel hybrid L3) is a shared cache; offline CPUs never count as sharers.
 - Clocks are `base_frequency` and `cpuinfo_max_freq` (kHz). Current frequency is not collected: it changes every moment and would make a dump impossible to replay.
-- Hypervisor: x86 trusts the `hypervisor` CPU flag; ARM matches virtual-platform DMI names. The shown value is the DMI product name.
+- Hypervisor: x86 trusts the `hypervisor` CPU flag; ARM matches known virtual-platform DMI names and skips bare-metal instances (`*.metal`). The name shown comes from a small table of platforms (KVM/QEMU, Hyper-V, VMware, Amazon EC2, Google Compute Engine, Apple Virtualization and others), because the raw DMI product name is often a machine type or an instance size.
 - ARM names come from `data/arm-midr.toml`, generated from util-linux. Apple part `0x000` is left out: Apple's hypervisor reports it for every Linux guest, and lscpu would call it "Swift".
 
 ## Data model (`src/model.rs`)

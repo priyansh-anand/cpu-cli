@@ -114,7 +114,7 @@ cpu --dump
 # ./cpu-dump-1790208000.tar.gz
 ```
 
-Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*`; on Linux, `/proc/cpuinfo` without serial numbers and specific files under `/sys/devices/system/cpu` and `/sys/devices/system/node`). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
+Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*`; on Linux, `/proc/cpuinfo` without serial numbers, the kernel release and architecture, specific topology, cache and clock files under `/sys/devices/system/cpu` and `/sys/devices/system/node`, the hybrid core-type lists under `/sys/devices/cpu_*/cpus`, and the DMI system vendor and product name). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
 
 ### Exit codes
 

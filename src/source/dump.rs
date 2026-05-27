@@ -1,8 +1,10 @@
 //! `cpu --dump`: capture this machine's raw CPU data as a snapshot.
 //!
-//! Capture is an allowlist, not "whatever the collector reads today", so old snapshots keep
-//! working as collectors learn to read more. The allowlist is also the privacy guarantee: nothing
-//! outside it (hostname, serial numbers, UUIDs, kernel addresses) is ever written.
+//! Capture is an allowlist that deliberately covers more than today's collector reads, so old
+//! snapshots keep working as collectors learn to read more. It is also the privacy guarantee:
+//! nothing outside it (hostname, serial numbers, UUIDs, kernel addresses) is ever written. macOS
+//! captures whole sysctl trees; Linux lists files one by one, because sysfs directories also hold
+//! kernel addresses.
 
 use std::collections::BTreeMap;
 use std::io;

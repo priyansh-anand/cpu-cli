@@ -13,3 +13,4 @@ All notable changes to this project are documented here. The format follows [Kee
 - Linux on x86-64 and ARM64: identity, Intel hybrid and ARM big.LITTLE core types, caches (including caches shared across core types), base and max clock speeds, NUMA nodes and hypervisor detection.
 - ARM core names from a table generated from util-linux's `lscpu-arm.c`.
 - `--dump` on Linux, with a per-file allowlist that never captures kernel addresses or board serial numbers.
+- Hypervisor names for common virtual platforms (KVM/QEMU, Hyper-V, VMware, Amazon EC2, Google Compute Engine, Apple Virtualization).

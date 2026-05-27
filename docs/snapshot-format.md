@@ -47,11 +47,11 @@ Capture uses a fixed **allowlist**, defined in `src/source/dump.rs`:
 | Source | Captured |
 |---|---|
 | sysctl (macOS) | every key under `hw.*` and `machdep.cpu.*`, plus `sysctl.proc_translated` and `kern.osrelease` |
-| files (Linux) | `/proc/cpuinfo` (with `Serial` lines removed), `/proc/sys/kernel/{arch,osrelease}`, CPU and node lists, per-CPU topology, capacity, MIDR and cpufreq files, per-cache `level`, `type`, `size` and sharing files, and the DMI vendor and product name |
+| files (Linux) | `/proc/cpuinfo` (with `Serial` lines removed), `/proc/sys/kernel/{arch,osrelease}`, CPU and node lists, the hybrid core-type lists (`/sys/devices/cpu_{core,atom,lowpower}/cpus`), per-CPU topology, capacity, MIDR and cpufreq files, per-cache `level`, `type`, `size` and sharing files, and the DMI vendor and product name |
 
 Linux files are listed one by one rather than swept by directory, because sysfs also contains kernel addresses (for example `crash_notes`).
 
-The allowlist is a privacy guarantee: a snapshot never contains the hostname, serial numbers, hardware UUIDs or anything else outside it. It is also why capture sweeps whole trees rather than recording only what today's collector reads: when a future version reads a new key, old snapshots already contain it.
+The allowlist is a privacy guarantee: a snapshot never contains the hostname, serial numbers, hardware UUIDs or anything else outside it. It also deliberately captures more than today's collector reads (every `hw.*` and `machdep.cpu.*` sysctl, and every listed Linux file even if unused), so that when a future version reads more, old snapshots already contain it. On Linux the list is per file rather than per directory; see above.
 
 ## Versioning
 

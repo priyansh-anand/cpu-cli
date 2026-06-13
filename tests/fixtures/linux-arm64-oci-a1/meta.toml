@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "linux"
+arch = "aarch64"
+kernel = "6.17.0-1011-oracle"
+created_unix = 1790251001
+note = "Oracle Cloud Ampere A1 (Neoverse-N1), 2 vCPUs; captured with cpu --dump on real hardware"

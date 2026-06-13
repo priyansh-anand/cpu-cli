@@ -1,0 +1,197 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "ARM",
+      "origin": "database",
+      "from": "arm-midr@2026-09"
+    },
+    "name": {
+      "value": "Neoverse-N1",
+      "origin": "database",
+      "from": "arm-midr@2026-09"
+    },
+    "arch": {
+      "value": "aarch64",
+      "origin": "detected",
+      "from": "/proc/sys/kernel/arch"
+    },
+    "arm_midr": {
+      "value": 1094701249,
+      "origin": "detected",
+      "from": "/sys/devices/system/cpu/cpu0/regs/identification/midr_el1"
+    },
+    "hypervisor": {
+      "value": "KVM/QEMU",
+      "origin": "detected",
+      "from": "/sys/class/dmi/id/sys_vendor"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "physical_cores": {
+      "value": 2,
+      "origin": "derived"
+    },
+    "logical_cpus": {
+      "value": 2,
+      "origin": "derived"
+    },
+    "smt_per_core": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "numa_nodes": [
+      {
+        "id": 0,
+        "cpus": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "kind": "uniform",
+      "cores": {
+        "value": 2,
+        "origin": "derived"
+      },
+      "threads": {
+        "value": 2,
+        "origin": "derived"
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "asimd",
+            "name": "NEON"
+          },
+          {
+            "raw": "asimdhp",
+            "name": "FP16"
+          },
+          {
+            "raw": "asimddp",
+            "name": "DotProd"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "aes",
+            "name": "AES"
+          },
+          {
+            "raw": "pmull",
+            "name": "PMULL"
+          },
+          {
+            "raw": "sha1",
+            "name": "SHA1"
+          },
+          {
+            "raw": "sha2",
+            "name": "SHA256"
+          },
+          {
+            "raw": "crc32",
+            "name": "CRC32"
+          }
+        ]
+      },
+      {
+        "group": "other",
+        "features": [
+          {
+            "raw": "atomics",
+            "name": "LSE"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "aes",
+      "asimd",
+      "asimddp",
+      "asimdhp",
+      "asimdrdm",
+      "atomics",
+      "cpuid",
+      "crc32",
+      "dcpop",
+      "evtstrm",
+      "fp",
+      "fphp",
+      "lrcpc",
+      "pmull",
+      "sha1",
+      "sha2"
+    ]
+  }
+}

@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "linux"
+arch = "x86_64"
+kernel = "6.1.0-52-cloud-amd64"
+created_unix = 1790250876
+note = "GCP VM, AMD EPYC 7B12, 2 vCPUs; captured with cpu --dump on real hardware"

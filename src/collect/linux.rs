@@ -21,25 +21,33 @@ const ARCH: &str = "/proc/sys/kernel/arch";
 const DMI_VENDOR: &str = "/sys/class/dmi/id/sys_vendor";
 const DMI_PRODUCT: &str = "/sys/class/dmi/id/product_name";
 
-/// Virtual platforms by a substring of their DMI vendor or product name, and the name shown.
-/// DMI's own product name is often a machine type ("Standard PC (Q35 + ICH9, 2009)") or an
-/// instance size ("c5.large"), not the hypervisor, so it is never shown raw when a name is known.
-const HYPERVISORS: &[(&str, &str)] = &[
-    ("Apple Virtualization", "Apple Virtualization"),
-    ("Google Compute Engine", "Google Compute Engine"),
-    ("Amazon EC2", "Amazon EC2 (Nitro)"),
-    ("VMware", "VMware"),
-    ("VirtualBox", "VirtualBox"),
-    ("innotek", "VirtualBox"),
-    ("Parallels", "Parallels"),
-    ("Virtual Machine", "Hyper-V"),
-    ("QEMU", "KVM/QEMU"),
-    ("KVM", "KVM"),
-    ("HVM domU", "Xen"),
-    ("Xen", "Xen"),
-    ("OpenStack", "OpenStack"),
-    ("BHYVE", "bhyve"),
-    ("Bochs", "Bochs"),
+/// Virtual platforms: `(vendor contains, product contains, name shown)`, where `""` matches
+/// anything. Both must match, so a generic product such as "KVM Virtual Machine" (Oracle Cloud)
+/// is not mistaken for Hyper-V's "Virtual Machine". DMI's own product name is often a machine type
+/// ("Standard PC (Q35 + ICH9, 2009)") or an instance size ("c5.large"), so it is never shown raw
+/// when a platform is recognised.
+const HYPERVISORS: &[(&str, &str, &str)] = &[
+    ("", "Apple Virtualization", "Apple Virtualization"),
+    ("", "Google Compute Engine", "Google Compute Engine"),
+    ("Amazon EC2", "", "Amazon EC2 (Nitro)"),
+    ("Microsoft Corporation", "Virtual Machine", "Hyper-V"),
+    ("VMware", "", "VMware"),
+    ("", "VMware", "VMware"),
+    ("innotek", "", "VirtualBox"),
+    ("", "VirtualBox", "VirtualBox"),
+    ("Parallels", "", "Parallels"),
+    ("", "Parallels", "Parallels"),
+    ("QEMU", "", "KVM/QEMU"),
+    ("", "QEMU", "KVM/QEMU"),
+    ("", "KVM", "KVM"),
+    ("Xen", "", "Xen"),
+    ("", "HVM domU", "Xen"),
+    ("OpenStack", "", "OpenStack"),
+    ("", "OpenStack", "OpenStack"),
+    ("BHYVE", "", "bhyve"),
+    ("", "BHYVE", "bhyve"),
+    ("Bochs", "", "Bochs"),
+    ("", "Bochs", "Bochs"),
 ];
 
 /// One `/proc/cpuinfo` processor block: field name to value.
@@ -255,7 +263,9 @@ fn x86_identity(r: &mut Reader, info: &[Block]) -> Identity {
         x86_family: number_field(r, info, "cpu family"),
         x86_model: number_field(r, info, "model"),
         x86_stepping: number_field(r, info, "stepping"),
-        microcode: field(r, info, "microcode"),
+        // KVM guests report 0xffffffff, meaning "hidden from the guest", not a revision.
+        microcode: field(r, info, "microcode")
+            .filter(|m| !m.value.eq_ignore_ascii_case("0xffffffff")),
         ..Identity::default()
     }
 }
@@ -322,12 +332,22 @@ fn derived_arch(info: &[Block]) -> F<String> {
 fn hypervisor(r: &mut Reader, info: &[Block]) -> F<String> {
     let vendor = r.text(DMI_VENDOR);
     let product = r.text(DMI_PRODUCT);
-    let known = HYPERVISORS.iter().find_map(|(pattern, name)| {
-        [(&product, DMI_PRODUCT), (&vendor, DMI_VENDOR)]
-            .into_iter()
-            .find(|(field, _)| field.as_deref().is_some_and(|f| f.contains(pattern)))
-            .map(|(_, path)| Fact::detected(name.to_string(), path))
-    });
+    let contains = |field: &Option<String>, pattern: &str| {
+        pattern.is_empty() || field.as_deref().is_some_and(|f| f.contains(pattern))
+    };
+    let known = HYPERVISORS
+        .iter()
+        .find(|(v, p, _)| contains(&vendor, v) && contains(&product, p))
+        .map(|(_, p, name)| {
+            Fact::detected(
+                name.to_string(),
+                if p.is_empty() {
+                    DMI_VENDOR
+                } else {
+                    DMI_PRODUCT
+                },
+            )
+        });
     let virtual_machine = if is_x86(info) {
         info.first()
             .and_then(|b| b.get("flags"))
@@ -1438,5 +1458,21 @@ mod tests {
             None,
             "bare-metal Graviton is not a VM"
         );
+    }
+
+    #[test]
+    fn real_oracle_a1_runs_on_kvm_not_hyper_v() {
+        // Oracle's DMI is QEMU / "KVM Virtual Machine": "Virtual Machine" alone is not Hyper-V.
+        let cpu = fixture("linux-arm64-oci-a1");
+        assert_eq!(value(&cpu.identity.hypervisor).as_deref(), Some("KVM/QEMU"));
+        assert_eq!(value(&cpu.identity.name).as_deref(), Some("Neoverse-N1"));
+    }
+
+    #[test]
+    fn a_hypervisor_masked_microcode_is_not_shown() {
+        // KVM guests report 0xffffffff: "hidden from the guest", not a revision.
+        let cpu = fixture("linux-x86-gcp-epyc-7b12");
+        assert_eq!(value(&cpu.identity.name).as_deref(), Some("AMD EPYC 7B12"));
+        assert_eq!(cpu.identity.microcode, None);
     }
 }

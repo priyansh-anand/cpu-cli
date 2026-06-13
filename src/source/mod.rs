@@ -6,6 +6,7 @@ use std::path::Path;
 
 pub mod dump;
 pub mod files;
+pub mod ioreg;
 pub mod snapshot;
 
 #[cfg(target_os = "macos")]
@@ -125,6 +126,13 @@ impl Fs for BTreeMap<String, String> {
     }
 }
 
+/// Recorded IOKit properties keyed `service:key`, e.g. `pmgr:voltage-states5-sram`.
+impl IoReg for BTreeMap<String, Vec<u8>> {
+    fn property(&self, service: &str, key: &str) -> Option<Vec<u8>> {
+        BTreeMap::get(self, &format!("{service}:{key}")).cloned()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Os {
     MacOs,
@@ -163,7 +171,7 @@ impl Sources {
             fs: live_fs(),
             sysctl: live_sysctl(),
             cpuid: Box::new(Stub),
-            ioreg: Box::new(Stub),
+            ioreg: live_ioreg(),
         }
     }
 
@@ -171,6 +179,16 @@ impl Sources {
     pub fn recorded(path: &Path) -> Result<Sources, SnapshotError> {
         Snapshot::open(path).map(Snapshot::into_sources)
     }
+}
+
+#[cfg(target_os = "macos")]
+fn live_ioreg() -> Box<dyn IoReg> {
+    Box::new(ioreg::LiveIoReg::new())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn live_ioreg() -> Box<dyn IoReg> {
+    Box::new(Stub)
 }
 
 #[cfg(target_os = "linux")]
@@ -266,5 +284,15 @@ mod tests {
         assert_eq!(Os::from_name("macos"), Os::MacOs);
         assert_eq!(Os::from_name("linux"), Os::Linux);
         assert_eq!(Os::from_name("windows"), Os::Other);
+    }
+
+    #[test]
+    fn map_ioreg_reads_service_keys() {
+        let map = BTreeMap::from([("pmgr:voltage-states5-sram".to_string(), vec![1u8, 2])]);
+        assert_eq!(
+            map.property("pmgr", "voltage-states5-sram"),
+            Some(vec![1, 2])
+        );
+        assert_eq!(map.property("pmgr", "missing"), None);
     }
 }

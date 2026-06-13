@@ -1,7 +1,8 @@
 //! The snapshot format: a directory or `.tar.gz` holding everything a collector reads, so any
 //! machine can be replayed anywhere (`cpu --from` and every fixture test).
 //!
-//! Layout: `meta.toml`, `sysctl.toml` (flat `"key" = value`), and `fs/<absolute path>` files.
+//! Layout: `meta.toml`, `sysctl.toml` (flat `"key" = value`), `ioreg.toml` (hex strings keyed
+//! `service:key`), and `fs/<absolute path>` files.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -60,6 +61,8 @@ pub struct Snapshot {
     pub sysctl: BTreeMap<String, SysctlValue>,
     /// File contents keyed by absolute path, e.g. `/proc/cpuinfo`.
     pub files: BTreeMap<String, String>,
+    /// IOKit data properties keyed `service:key`.
+    pub ioreg: BTreeMap<String, Vec<u8>>,
 }
 
 #[derive(Debug)]
@@ -124,6 +127,10 @@ impl Snapshot {
             Some(text) => parse_sysctl(text)?,
             None => BTreeMap::new(),
         };
+        let ioreg = match entries.get("ioreg.toml") {
+            Some(text) => parse_ioreg(text)?,
+            None => BTreeMap::new(),
+        };
         let files = entries
             .iter()
             .filter_map(|(name, text)| {
@@ -135,6 +142,7 @@ impl Snapshot {
             meta,
             sysctl,
             files,
+            ioreg,
         })
     }
 
@@ -156,6 +164,19 @@ impl Snapshot {
             }
             entries.insert(
                 "sysctl.toml".to_string(),
+                toml::to_string(&table).expect("table is plain data"),
+            );
+        }
+        if !self.ioreg.is_empty() {
+            let mut table = toml::Table::new();
+            for (key, bytes) in &self.ioreg {
+                table.insert(
+                    key.clone(),
+                    toml::Value::String(super::ioreg::encode_hex(bytes)),
+                );
+            }
+            entries.insert(
+                "ioreg.toml".to_string(),
                 toml::to_string(&table).expect("table is plain data"),
             );
         }
@@ -186,7 +207,7 @@ impl Snapshot {
             fs: Box::new(self.files),
             sysctl: Box::new(self.sysctl),
             cpuid: Box::new(Stub),
-            ioreg: Box::new(Stub),
+            ioreg: Box::new(self.ioreg),
         }
     }
 }
@@ -210,9 +231,21 @@ fn parse_sysctl(text: &str) -> Result<BTreeMap<String, SysctlValue>, SnapshotErr
         .collect())
 }
 
+fn parse_ioreg(text: &str) -> Result<BTreeMap<String, Vec<u8>>, SnapshotError> {
+    let table: toml::Table = toml::from_str(text).map_err(|e| invalid("ioreg.toml", e))?;
+    table
+        .into_iter()
+        .filter_map(|(key, value)| value.as_str().map(|hex| (key, hex.to_string())))
+        .map(|(key, hex)| match super::ioreg::decode_hex(&hex) {
+            Some(bytes) => Ok((key, bytes)),
+            None => Err(invalid("ioreg.toml", format!("{key} is not hex"))),
+        })
+        .collect()
+}
+
 /// Whether a path inside a snapshot is part of the format. Anything else is ignored unread.
 fn in_layout(name: &str) -> bool {
-    name == "meta.toml" || name == "sysctl.toml" || name.starts_with("fs/")
+    name == "meta.toml" || name == "sysctl.toml" || name == "ioreg.toml" || name.starts_with("fs/")
 }
 
 /// Reads one entry, refusing anything past the per-entry and running-total limits.
@@ -265,7 +298,7 @@ fn read_dir_entries(root: &Path) -> io::Result<BTreeMap<String, String>> {
     if !is_file("meta.toml") {
         return Ok(out);
     }
-    for name in ["meta.toml", "sysctl.toml"] {
+    for name in ["meta.toml", "sysctl.toml", "ioreg.toml"] {
         if is_file(name) {
             out.insert(
                 name.to_string(),
@@ -326,6 +359,10 @@ mod tests {
                 ),
             ]),
             files: BTreeMap::from([("/proc/cpuinfo".to_string(), "processor\t: 0\n".to_string())]),
+            ioreg: BTreeMap::from([(
+                "pmgr:voltage-states5-sram".to_string(),
+                vec![0x60, 0xf5, 0x13, 0x00, 0x16, 0x03, 0x00, 0x00],
+            )]),
         }
     }
 
@@ -462,5 +499,14 @@ mod tests {
         let sources = sample().into_sources();
         assert_eq!(sources.os, Os::MacOs);
         assert_eq!(sources.sysctl.int("hw.ncpu"), Some(10));
+    }
+
+    #[test]
+    fn ioreg_is_stored_as_hex() {
+        let entries = sample().to_entries();
+        assert_eq!(
+            entries["ioreg.toml"].trim(),
+            "\"pmgr:voltage-states5-sram\" = \"60f5130016030000\""
+        );
     }
 }

@@ -25,6 +25,13 @@ pub fn allowed_sysctl(key: &str) -> bool {
         })
 }
 
+/// IOKit properties captured: the power manager's frequency tables. Nothing else in the registry
+/// (serial numbers, UUIDs) is ever read.
+pub fn allowed_ioreg(key: &str) -> bool {
+    key.strip_prefix("pmgr:")
+        .is_some_and(|k| k.starts_with("voltage-states"))
+}
+
 const CPUINFO: &str = "/proc/cpuinfo";
 const OSRELEASE: &str = "/proc/sys/kernel/osrelease";
 const CPU_DIR: &str = "/sys/devices/system/cpu";
@@ -150,6 +157,7 @@ fn scrub_cpuinfo(text: &str) -> String {
 pub fn capture_live() -> io::Result<Snapshot> {
     let sysctl = capture_sysctl()?;
     let files = capture_live_files();
+    let ioreg = capture_ioreg();
     let kernel = match sysctl.get("kern.osrelease") {
         Some(SysctlValue::Str(s)) => Some(s.clone()),
         _ => files.get(OSRELEASE).map(|s| s.trim().to_string()),
@@ -158,7 +166,23 @@ pub fn capture_live() -> io::Result<Snapshot> {
         meta: Meta::current(kernel),
         sysctl,
         files,
+        ioreg,
     })
+}
+
+#[cfg(target_os = "macos")]
+fn capture_ioreg() -> BTreeMap<String, Vec<u8>> {
+    super::ioreg::LiveIoReg::new()
+        .properties("pmgr")
+        .into_iter()
+        .map(|(key, bytes)| (format!("pmgr:{key}"), bytes))
+        .filter(|(key, _)| allowed_ioreg(key))
+        .collect()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn capture_ioreg() -> BTreeMap<String, Vec<u8>> {
+    BTreeMap::new()
 }
 
 #[cfg(target_os = "linux")]
@@ -342,5 +366,15 @@ mod tests {
                 "{name}: the collector reads files --dump never captures: {missed:?}"
             );
         }
+    }
+
+    #[test]
+    fn ioreg_allowlist_is_frequency_tables_only() {
+        assert!(allowed_ioreg("pmgr:voltage-states5-sram"));
+        assert!(allowed_ioreg("pmgr:voltage-states11"));
+        assert!(!allowed_ioreg("pmgr:compatible"));
+        assert!(!allowed_ioreg(
+            "IOPlatformExpertDevice:IOPlatformSerialNumber"
+        ));
     }
 }

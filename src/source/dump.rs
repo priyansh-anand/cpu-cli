@@ -307,7 +307,13 @@ mod tests {
             }
         }
 
-        for name in ["linux-x86-intel-hybrid", "linux-x86-amd-gce"] {
+        for name in [
+            "linux-x86-intel-hybrid",
+            "linux-x86-amd-gce",
+            "linux-x86-gcp-epyc-7b12",
+            "linux-arm64-oci-a1",
+            "linux-arm64-apple-vm",
+        ] {
             let path = Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("tests/fixtures")
                 .join(name);

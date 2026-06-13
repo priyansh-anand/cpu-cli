@@ -1,0 +1,322 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "AMD",
+      "origin": "detected",
+      "from": "/proc/cpuinfo:vendor_id"
+    },
+    "name": {
+      "value": "AMD EPYC 7B12",
+      "origin": "detected",
+      "from": "/proc/cpuinfo:model name"
+    },
+    "arch": {
+      "value": "x86_64",
+      "origin": "detected",
+      "from": "/proc/sys/kernel/arch"
+    },
+    "x86_family": {
+      "value": 23,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:cpu family"
+    },
+    "x86_model": {
+      "value": 49,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:model"
+    },
+    "x86_stepping": {
+      "value": 0,
+      "origin": "detected",
+      "from": "/proc/cpuinfo:stepping"
+    },
+    "hypervisor": {
+      "value": "Google Compute Engine",
+      "origin": "detected",
+      "from": "/sys/class/dmi/id/product_name"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "physical_cores": {
+      "value": 1,
+      "origin": "derived"
+    },
+    "logical_cpus": {
+      "value": 2,
+      "origin": "derived"
+    },
+    "smt_per_core": {
+      "value": 2,
+      "origin": "derived"
+    },
+    "numa_nodes": [
+      {
+        "id": 0,
+        "cpus": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "clusters": [
+    {
+      "kind": "uniform",
+      "cores": {
+        "value": 1,
+        "origin": "derived"
+      },
+      "threads": {
+        "value": 2,
+        "origin": "derived"
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index1/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index0/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 524288,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index2/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 3,
+          "kind": "unified",
+          "size": {
+            "value": 16777216,
+            "origin": "detected",
+            "from": "/sys/devices/system/cpu/cpu0/cache/index3/size"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "sse4_2",
+            "name": "SSE4.2"
+          },
+          {
+            "raw": "avx",
+            "name": "AVX"
+          },
+          {
+            "raw": "avx2",
+            "name": "AVX2"
+          },
+          {
+            "raw": "fma",
+            "name": "FMA"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "aes",
+            "name": "AES"
+          },
+          {
+            "raw": "pclmulqdq",
+            "name": "PCLMUL"
+          },
+          {
+            "raw": "sha_ni",
+            "name": "SHA-NI"
+          },
+          {
+            "raw": "rdrand",
+            "name": "RDRAND"
+          },
+          {
+            "raw": "rdseed",
+            "name": "RDSEED"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "features": [
+          {
+            "raw": "smep",
+            "name": "SMEP"
+          },
+          {
+            "raw": "smap",
+            "name": "SMAP"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "3dnowprefetch",
+      "abm",
+      "adx",
+      "aes",
+      "apic",
+      "arat",
+      "avx",
+      "avx2",
+      "bmi1",
+      "bmi2",
+      "clflush",
+      "clflushopt",
+      "clwb",
+      "clzero",
+      "cmov",
+      "cmp_legacy",
+      "constant_tsc",
+      "cpuid",
+      "cr8_legacy",
+      "cx16",
+      "cx8",
+      "de",
+      "extd_apicid",
+      "f16c",
+      "fma",
+      "fpu",
+      "fsgsbase",
+      "fxsr",
+      "fxsr_opt",
+      "ht",
+      "hypervisor",
+      "ibpb",
+      "ibrs",
+      "lahf_lm",
+      "lm",
+      "mca",
+      "mce",
+      "misalignsse",
+      "mmx",
+      "mmxext",
+      "movbe",
+      "msr",
+      "mtrr",
+      "nonstop_tsc",
+      "nopl",
+      "nx",
+      "osvw",
+      "pae",
+      "pat",
+      "pclmulqdq",
+      "pdpe1gb",
+      "pge",
+      "pni",
+      "popcnt",
+      "pse",
+      "pse36",
+      "rdpid",
+      "rdrand",
+      "rdseed",
+      "rdtscp",
+      "rep_good",
+      "sep",
+      "sha_ni",
+      "smap",
+      "smep",
+      "ssbd",
+      "sse",
+      "sse2",
+      "sse4_1",
+      "sse4_2",
+      "sse4a",
+      "ssse3",
+      "stibp",
+      "syscall",
+      "topoext",
+      "tsc",
+      "tsc_adjust",
+      "tsc_known_freq",
+      "umip",
+      "vme",
+      "vmmcall",
+      "x2apic",
+      "xgetbv1",
+      "xsave",
+      "xsavec",
+      "xsaveerptr",
+      "xsaveopt"
+    ]
+  }
+}

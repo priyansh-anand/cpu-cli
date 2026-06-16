@@ -1,0 +1,423 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "Apple",
+      "origin": "derived"
+    },
+    "name": {
+      "value": "Apple M5",
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.brand_string"
+    },
+    "arch": {
+      "value": "arm64",
+      "origin": "detected",
+      "from": "sysctl:hw.optional.arm64"
+    },
+    "translated": {
+      "value": true,
+      "origin": "detected",
+      "from": "sysctl:sysctl.proc_translated"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "detected",
+      "from": "sysctl:hw.packages"
+    },
+    "physical_cores": {
+      "value": 10,
+      "origin": "detected",
+      "from": "sysctl:hw.physicalcpu"
+    },
+    "logical_cpus": {
+      "value": 10,
+      "origin": "detected",
+      "from": "sysctl:hw.logicalcpu"
+    },
+    "smt_per_core": {
+      "value": 1,
+      "origin": "derived"
+    }
+  },
+  "clusters": [
+    {
+      "kind": "performance",
+      "name": {
+        "value": "Super",
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel0.name"
+      },
+      "cores": {
+        "value": 4,
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel0.physicalcpu"
+      },
+      "threads": {
+        "value": 4,
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel0.logicalcpu"
+      },
+      "clock": {
+        "max": {
+          "value": 4464000000,
+          "origin": "detected",
+          "from": "ioreg:pmgr:voltage-states5-sram"
+        }
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 196608,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel0.l1icachesize"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 131072,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel0.l1dcachesize"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 4,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 16777216,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel0.l2cachesize"
+          },
+          "shared_by": {
+            "value": 4,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel0.cpusperl2"
+          },
+          "cores": {
+            "value": 4,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "efficiency",
+      "name": {
+        "value": "Efficiency",
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel1.name"
+      },
+      "cores": {
+        "value": 6,
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel1.physicalcpu"
+      },
+      "threads": {
+        "value": 6,
+        "origin": "detected",
+        "from": "sysctl:hw.perflevel1.logicalcpu"
+      },
+      "clock": {
+        "max": {
+          "value": 3048000000,
+          "origin": "detected",
+          "from": "ioreg:pmgr:voltage-states1-sram"
+        }
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 131072,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel1.l1icachesize"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 6,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 65536,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel1.l1dcachesize"
+          },
+          "shared_by": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 6,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 6291456,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel1.l2cachesize"
+          },
+          "shared_by": {
+            "value": 6,
+            "origin": "detected",
+            "from": "sysctl:hw.perflevel1.cpusperl2"
+          },
+          "cores": {
+            "value": 6,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "AdvSIMD",
+            "name": "NEON"
+          },
+          {
+            "raw": "FEAT_FP16",
+            "name": "FP16"
+          },
+          {
+            "raw": "FEAT_BF16",
+            "name": "BF16"
+          },
+          {
+            "raw": "FEAT_I8MM",
+            "name": "I8MM"
+          },
+          {
+            "raw": "FEAT_DotProd",
+            "name": "DotProd"
+          },
+          {
+            "raw": "FEAT_FHM",
+            "name": "FHM"
+          },
+          {
+            "raw": "FEAT_SME",
+            "name": "SME"
+          },
+          {
+            "raw": "FEAT_SME2",
+            "name": "SME2"
+          },
+          {
+            "raw": "FEAT_SME2p1",
+            "name": "SME2.1"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "FEAT_AES",
+            "name": "AES"
+          },
+          {
+            "raw": "FEAT_PMULL",
+            "name": "PMULL"
+          },
+          {
+            "raw": "FEAT_SHA1",
+            "name": "SHA1"
+          },
+          {
+            "raw": "FEAT_SHA256",
+            "name": "SHA256"
+          },
+          {
+            "raw": "FEAT_SHA512",
+            "name": "SHA512"
+          },
+          {
+            "raw": "FEAT_SHA3",
+            "name": "SHA3"
+          },
+          {
+            "raw": "FEAT_CRC32",
+            "name": "CRC32"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "features": [
+          {
+            "raw": "FEAT_PAuth",
+            "name": "PAC"
+          },
+          {
+            "raw": "FEAT_BTI",
+            "name": "BTI"
+          },
+          {
+            "raw": "FEAT_MTE",
+            "name": "MTE"
+          },
+          {
+            "raw": "FEAT_DIT",
+            "name": "DIT"
+          },
+          {
+            "raw": "FEAT_SB",
+            "name": "SB"
+          },
+          {
+            "raw": "FEAT_CSV2",
+            "name": "CSV2"
+          },
+          {
+            "raw": "FEAT_CSV3",
+            "name": "CSV3"
+          }
+        ]
+      },
+      {
+        "group": "other",
+        "features": [
+          {
+            "raw": "FEAT_LSE",
+            "name": "LSE"
+          },
+          {
+            "raw": "FEAT_LSE2",
+            "name": "LSE2"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "AdvSIMD",
+      "AdvSIMD_HPFPCvt",
+      "FEAT_AES",
+      "FEAT_AFP",
+      "FEAT_BF16",
+      "FEAT_BTI",
+      "FEAT_CRC32",
+      "FEAT_CSSC",
+      "FEAT_CSV2",
+      "FEAT_CSV3",
+      "FEAT_DIT",
+      "FEAT_DPB",
+      "FEAT_DPB2",
+      "FEAT_DotProd",
+      "FEAT_EBF16",
+      "FEAT_ECV",
+      "FEAT_FCMA",
+      "FEAT_FHM",
+      "FEAT_FP16",
+      "FEAT_FPAC",
+      "FEAT_FPACCOMBINE",
+      "FEAT_FRINTTS",
+      "FEAT_FlagM",
+      "FEAT_FlagM2",
+      "FEAT_HBC",
+      "FEAT_I8MM",
+      "FEAT_JSCVT",
+      "FEAT_LRCPC",
+      "FEAT_LRCPC2",
+      "FEAT_LSE",
+      "FEAT_LSE2",
+      "FEAT_MTE",
+      "FEAT_MTE2",
+      "FEAT_MTE4",
+      "FEAT_MTE_CANONICAL_TAGS",
+      "FEAT_MTE_NO_ADDRESS_TAGS",
+      "FEAT_MTE_STORE_ONLY",
+      "FEAT_PACIMP",
+      "FEAT_PAuth",
+      "FEAT_PAuth2",
+      "FEAT_PMULL",
+      "FEAT_RDM",
+      "FEAT_RPRES",
+      "FEAT_SB",
+      "FEAT_SHA1",
+      "FEAT_SHA256",
+      "FEAT_SHA3",
+      "FEAT_SHA512",
+      "FEAT_SME",
+      "FEAT_SME2",
+      "FEAT_SME2p1",
+      "FEAT_SME_B16B16",
+      "FEAT_SME_F16F16",
+      "FEAT_SME_F64F64",
+      "FEAT_SME_I16I64",
+      "FEAT_SVE_B16B16",
+      "FEAT_WFxT",
+      "FP_SyncExceptions",
+      "SME_B16F32",
+      "SME_BI32I32",
+      "SME_F16F32",
+      "SME_F32F32",
+      "SME_I16I32",
+      "SME_I8I32"
+    ]
+  }
+}

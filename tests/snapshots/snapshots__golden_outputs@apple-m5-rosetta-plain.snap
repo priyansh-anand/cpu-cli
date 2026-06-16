@@ -1,0 +1,28 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+Identity
+  Name          Apple M5
+  Vendor        Apple
+  Architecture  arm64, x86_64 binary running under Rosetta 2
+
+Topology
+  Cores     10 physical, 10 logical, no SMT
+  Clusters  4 x Super, 6 x Efficiency
+
+Clocks
+       Super     Efficiency
+  Max  4.46 GHz  3.05 GHz
+
+Cache
+  Level  Super             Efficiency
+  L1i    192 KiB / core    128 KiB / core
+  L1d    128 KiB / core    64 KiB / core
+  L2     16 MiB / 4 cores  6 MiB / 6 cores
+
+Features
+  SIMD      NEON, FP16, BF16, I8MM, DotProd, FHM, SME, SME2, SME2.1
+  Crypto    AES, PMULL, SHA1, SHA256, SHA512, SHA3, CRC32
+  Security  PAC, BTI, MTE, DIT, SB, CSV2, CSV3
+  Other     LSE, LSE2

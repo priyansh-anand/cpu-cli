@@ -5,17 +5,18 @@ use crate::db::Arch;
 use crate::model::{
     Cache, CacheKind, Clocks, Cluster, CoreKind, Cpu, Diagnostic, F, Fact, Identity, Topology,
 };
-use crate::source::Sysctl;
-use crate::units::Bytes;
+use crate::source::{IoReg, Sysctl};
+use crate::units::{Bytes, Hertz};
 
 use super::{features, plausible_cache_size, ratio};
 
 /// More perflevels than this is garbage, not a real chip.
 const MAX_PERFLEVELS: u32 = 8;
 
-pub fn collect(sys: &dyn Sysctl) -> Cpu {
+pub fn collect(sys: &dyn Sysctl, ioreg: &dyn IoReg) -> Cpu {
     let mut r = Reader {
         sys,
+        ioreg,
         diagnostics: Vec::new(),
     };
     let identity = identity(&mut r);
@@ -36,6 +37,7 @@ pub fn collect(sys: &dyn Sysctl) -> Cpu {
 /// A missing key is normal (older macOS, other chips) and is not a diagnostic.
 struct Reader<'a> {
     sys: &'a dyn Sysctl,
+    ioreg: &'a dyn IoReg,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -85,6 +87,23 @@ impl Reader<'_> {
         }
     }
 
+    /// A perflevel's max clock from its `pmgr` table; only for two-perflevel chips.
+    fn max_clock(&mut self, index: u32, levels: u32) -> F<Hertz> {
+        let table = CLOCK_TABLES.get(index as usize).filter(|_| levels == 2)?;
+        let bytes = self.ioreg.property("pmgr", table)?;
+        let from = format!("ioreg:pmgr:{table}");
+        match max_frequency(&bytes) {
+            Some(hz) => Some(Fact::detected(Hertz(hz), from)),
+            None => {
+                self.diagnostics.push(Diagnostic {
+                    from,
+                    message: "implausible frequency table".to_string(),
+                });
+                None
+            }
+        }
+    }
+
     fn flag(&self, key: &str) -> bool {
         self.sys.int(key) == Some(1)
     }
@@ -95,6 +114,22 @@ impl Reader<'_> {
             message,
         });
     }
+}
+
+/// Which `pmgr` table belongs to which perflevel: perflevel0 (fastest) is `voltage-states5-sram`,
+/// perflevel1 is `voltage-states1-sram`, on every Apple Silicon generation so far.
+const CLOCK_TABLES: [&str; 2] = ["voltage-states5-sram", "voltage-states1-sram"];
+
+/// Highest frequency in a `voltage-states*` table of 8-byte (frequency, voltage) little-endian u32
+/// entries. M1-M3 store hertz; the M5 stores kilohertz (4.46 GHz does not fit a u32 in hertz), so a
+/// maximum below 100 000 000 means kilohertz. Entries are not sorted, so the maximum is taken.
+pub(crate) fn max_frequency(table: &[u8]) -> Option<u64> {
+    let max = table
+        .chunks_exact(8)
+        .map(|e| u64::from(u32::from_le_bytes([e[0], e[1], e[2], e[3]])))
+        .max()?;
+    let hz = if max >= 100_000_000 { max } else { max * 1000 };
+    (100_000_000..=10_000_000_000).contains(&hz).then_some(hz)
 }
 
 fn source(key: &str) -> String {
@@ -203,7 +238,10 @@ fn perflevel(r: &mut Reader, index: u32, levels: u32) -> Cluster {
         name,
         cores,
         threads,
-        clock: Clocks::default(),
+        clock: Clocks {
+            max: r.max_clock(index, levels),
+            ..Clocks::default()
+        },
         caches,
     }
 }
@@ -226,6 +264,12 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
+    use crate::source::Stub;
+
+    /// The collector with no IOKit tables, as the older tests expect.
+    fn collect_sys(sys: &dyn Sysctl) -> Cpu {
+        collect(sys, &Stub)
+    }
     use crate::model::Origin;
     use crate::source::SysctlValue::{self, Int, Str};
 
@@ -275,7 +319,7 @@ mod tests {
 
     #[test]
     fn perflevels_become_named_clusters_fastest_first() {
-        let cpu = collect(&with(&[]));
+        let cpu = collect_sys(&with(&[]));
         let c = &cpu.clusters;
         assert_eq!(c.len(), 2);
         assert_eq!(
@@ -290,7 +334,7 @@ mod tests {
 
     #[test]
     fn caches_record_size_sharing_and_instances() {
-        let cpu = collect(&with(&[]));
+        let cpu = collect_sys(&with(&[]));
         let l2 = cpu.clusters[0]
             .caches
             .iter()
@@ -322,7 +366,7 @@ mod tests {
 
     #[test]
     fn two_physical_clusters_of_one_type_show_as_instances() {
-        let cpu = collect(&with(&[
+        let cpu = collect_sys(&with(&[
             ("hw.perflevel0.physicalcpu", Some(Int(8))),
             ("hw.perflevel0.logicalcpu", Some(Int(8))),
         ]));
@@ -339,7 +383,7 @@ mod tests {
 
     #[test]
     fn identity_and_topology() {
-        let cpu = collect(&with(&[]));
+        let cpu = collect_sys(&with(&[]));
         assert_eq!(value(&cpu.identity.name).as_deref(), Some("Apple M5"));
         assert_eq!(
             cpu.identity.vendor,
@@ -352,12 +396,12 @@ mod tests {
 
     #[test]
     fn only_enabled_features_are_collected() {
-        assert_eq!(collect(&with(&[])).features.raw, vec!["FEAT_AES"]);
+        assert_eq!(collect_sys(&with(&[])).features.raw, vec!["FEAT_AES"]);
     }
 
     #[test]
     fn without_perflevels_there_is_one_cluster_and_no_guessed_caches() {
-        let cpu = collect(&with(&[("hw.nperflevels", None)]));
+        let cpu = collect_sys(&with(&[("hw.nperflevels", None)]));
         assert_eq!(cpu.clusters.len(), 1);
         assert_eq!(cpu.clusters[0].kind, CoreKind::Uniform);
         assert!(
@@ -368,7 +412,7 @@ mod tests {
 
     #[test]
     fn implausible_values_are_dropped_with_a_diagnostic() {
-        let cpu = collect(&with(&[
+        let cpu = collect_sys(&with(&[
             ("hw.perflevel0.physicalcpu", Some(Int(0))),
             ("hw.perflevel0.l2cachesize", Some(Int(0))),
             ("hw.perflevel1.l1dcachesize", Some(Int(1000))),
@@ -394,14 +438,14 @@ mod tests {
 
     #[test]
     fn absurd_perflevel_count_falls_back_to_one_cluster() {
-        let cpu = collect(&with(&[("hw.nperflevels", Some(Int(99)))]));
+        let cpu = collect_sys(&with(&[("hw.nperflevels", Some(Int(99)))]));
         assert_eq!(cpu.clusters.len(), 1);
         assert_eq!(cpu.diagnostics.len(), 1);
     }
 
     #[test]
     fn control_characters_are_rejected_not_printed() {
-        let cpu = collect(&with(&[
+        let cpu = collect_sys(&with(&[
             (
                 "machdep.cpu.brand_string",
                 Some(Str("Apple \u{1b}]0;pwned\u{7}M5".into())),
@@ -422,6 +466,75 @@ mod tests {
 
     #[test]
     fn an_empty_machine_is_not_identified() {
-        assert!(!collect(&BTreeMap::<String, SysctlValue>::new()).is_identified());
+        assert!(!collect_sys(&BTreeMap::<String, SysctlValue>::new()).is_identified());
+    }
+
+    const M5_P: &str = "60f51300160300004089180016030000e07a1d002a030000e0df210048030000e044260052030000a0072b006103000000e02e0084030000a05a3200a203000060a63500b603000040c33800ca030000a0243b00e803000020573d000604000080b83f0024040000c0d1400024040000802f410024040000e019420024040000e0904300240400000062430047040000801d440047040000";
+    const M5_E: &str = "e0d40e00160300000094110016030000802b18002a03000040651e003e03000080e3230061030000e032290089030000203a2d00ca03000040822e00ca030000";
+
+    fn m5_tables() -> BTreeMap<String, Vec<u8>> {
+        let hex = crate::source::ioreg::decode_hex;
+        BTreeMap::from([
+            ("pmgr:voltage-states5-sram".to_string(), hex(M5_P).unwrap()),
+            ("pmgr:voltage-states1-sram".to_string(), hex(M5_E).unwrap()),
+        ])
+    }
+
+    #[test]
+    fn frequency_tables_decode_both_units() {
+        let hex = crate::source::ioreg::decode_hex;
+        assert_eq!(
+            max_frequency(&hex(M5_P).unwrap()),
+            Some(4_464_000_000),
+            "M5 stores kHz, unsorted"
+        );
+        assert_eq!(max_frequency(&hex(M5_E).unwrap()), Some(3_048_000_000));
+        // M1-style hertz: 600 MHz and 3.204 GHz.
+        let hz: Vec<u8> = [600_000_000u32, 3_204_000_000]
+            .iter()
+            .flat_map(|f| [f.to_le_bytes(), 0u32.to_le_bytes()].concat())
+            .collect();
+        assert_eq!(max_frequency(&hz), Some(3_204_000_000));
+    }
+
+    #[test]
+    fn odd_tables_are_rejected() {
+        assert_eq!(max_frequency(&[]), None);
+        assert_eq!(max_frequency(&[0; 16]), None);
+        assert_eq!(max_frequency(&[1, 2, 3]), None, "shorter than one entry");
+    }
+
+    #[test]
+    fn perflevels_get_their_max_clock() {
+        let cpu = collect(&with(&[]), &m5_tables());
+        let max: Vec<Option<Hertz>> = cpu.clusters.iter().map(|c| value(&c.clock.max)).collect();
+        assert_eq!(
+            max,
+            [Some(Hertz(4_464_000_000)), Some(Hertz(3_048_000_000))]
+        );
+        assert_eq!(
+            cpu.clusters[0].clock.max.as_ref().unwrap().origin,
+            Origin::Detected("ioreg:pmgr:voltage-states5-sram".into())
+        );
+    }
+
+    #[test]
+    fn clock_tables_need_exactly_two_perflevels() {
+        let one = collect(&with(&[("hw.nperflevels", Some(Int(1)))]), &m5_tables());
+        assert!(one.clusters.iter().all(|c| c.clock.is_empty()));
+    }
+
+    #[test]
+    fn a_bad_table_is_a_diagnostic() {
+        let tables = BTreeMap::from([("pmgr:voltage-states5-sram".to_string(), vec![0u8; 16])]);
+        let cpu = collect(&with(&[]), &tables);
+        assert!(cpu.clusters[0].clock.is_empty());
+        assert!(
+            cpu.diagnostics
+                .iter()
+                .any(|d| d.from == "ioreg:pmgr:voltage-states5-sram"),
+            "{:?}",
+            cpu.diagnostics
+        );
     }
 }

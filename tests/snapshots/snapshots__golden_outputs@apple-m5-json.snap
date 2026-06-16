@@ -59,6 +59,13 @@ expression: "render(&cpu, mode, false)"
         "origin": "detected",
         "from": "sysctl:hw.perflevel0.logicalcpu"
       },
+      "clock": {
+        "max": {
+          "value": 4464000000,
+          "origin": "detected",
+          "from": "ioreg:pmgr:voltage-states5-sram"
+        }
+      },
       "caches": [
         {
           "level": 1,
@@ -142,6 +149,13 @@ expression: "render(&cpu, mode, false)"
         "value": 6,
         "origin": "detected",
         "from": "sysctl:hw.perflevel1.logicalcpu"
+      },
+      "clock": {
+        "max": {
+          "value": 3048000000,
+          "origin": "detected",
+          "from": "ioreg:pmgr:voltage-states1-sram"
+        }
       },
       "caches": [
         {

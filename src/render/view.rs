@@ -495,7 +495,10 @@ mod tests {
     #[test]
     fn apple_m5_sections() {
         let s = build(&fixture("apple-m5"), &UNICODE);
-        assert_eq!(titles(&s), ["Identity", "Topology", "Cache", "Features"]);
+        assert_eq!(
+            titles(&s),
+            ["Identity", "Topology", "Clocks", "Cache", "Features"]
+        );
         assert_eq!(row(&s, "Clusters").lines, ["4 × Super · 6 × Efficiency"]);
         assert_eq!(
             row(&s, "Cores").lines,
@@ -506,7 +509,7 @@ mod tests {
     #[test]
     fn cache_grid_has_a_column_per_cluster() {
         let s = build(&fixture("apple-m5"), &UNICODE);
-        let g = grid(&s);
+        let g = grid_titled(&s, "Cache");
         assert_eq!(g.columns, ["Super", "Efficiency"]);
         let labels: Vec<&str> = g.rows.iter().map(|r| r.label.as_str()).collect();
         assert_eq!(labels, ["L1i", "L1d", "L2"]);

@@ -13,7 +13,7 @@ const MAX_CACHE_BYTES: u64 = 1 << 30;
 
 pub fn collect(sources: &Sources) -> Cpu {
     match sources.os {
-        Os::MacOs => macos::collect(sources.sysctl.as_ref()),
+        Os::MacOs => macos::collect(sources.sysctl.as_ref(), sources.ioreg.as_ref()),
         Os::Linux => linux::collect(sources.fs.as_ref()),
         Os::Other => Cpu::default(),
     }

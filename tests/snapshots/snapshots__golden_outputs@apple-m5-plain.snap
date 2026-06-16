@@ -11,6 +11,10 @@ Topology
   Cores     10 physical, 10 logical, no SMT
   Clusters  4 x Super, 6 x Efficiency
 
+Clocks
+       Super     Efficiency
+  Max  4.46 GHz  3.05 GHz
+
 Cache
   Level  Super             Efficiency
   L1i    192 KiB / core    128 KiB / core

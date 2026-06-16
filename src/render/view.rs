@@ -188,9 +188,17 @@ fn val<T: ToString>(fact: &F<T>) -> Option<String> {
 
 fn identity(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
     let id = &cpu.identity;
-    let arch = val(&id.arch).map(|arch| match val(&id.isa_level) {
-        Some(isa) => format!("{arch} ({isa})"),
-        None => arch,
+    let translated = id.translated.as_ref().is_some_and(|t| t.value);
+    let arch = val(&id.arch).map(|arch| {
+        let arch = match val(&id.isa_level) {
+            Some(isa) => format!("{arch} ({isa})"),
+            None => arch,
+        };
+        if translated {
+            format!("{arch}{}x86_64 binary running under Rosetta 2", g.sep)
+        } else {
+            arch
+        }
     });
     let hypervisor = val(&id.hypervisor).map(|h| {
         wrap(
@@ -734,5 +742,14 @@ mod tests {
             );
         }
         assert!(row(&s, "NUMA").lines[0].starts_with("8 nodes: 0-15,256-271 · "));
+    }
+
+    #[test]
+    fn rosetta_is_named_in_the_architecture_row() {
+        let s = build(&fixture("apple-m5-rosetta"), &UNICODE);
+        assert_eq!(
+            row(&s, "Architecture").lines,
+            ["arm64 · x86_64 binary running under Rosetta 2"]
+        );
     }
 }

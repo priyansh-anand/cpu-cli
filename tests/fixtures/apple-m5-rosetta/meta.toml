@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "macos"
+arch = "x86_64"
+kernel = "25.5.0"
+created_unix = 1790252420
+note = "Apple M5; x86_64 build of cpu running under Rosetta 2; captured with cpu --dump"

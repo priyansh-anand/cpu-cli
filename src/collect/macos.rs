@@ -146,10 +146,16 @@ fn identity(r: &mut Reader) -> Identity {
     let arch = r
         .flag("hw.optional.arm64")
         .then(|| Fact::detected("arm64".to_string(), source("hw.optional.arm64")));
+    // An x86 build under Rosetta still sees the real ARM keys (plus fake x86 ones this path never
+    // reads); proc_translated says so.
+    let translated = r
+        .flag("sysctl.proc_translated")
+        .then(|| Fact::detected(true, source("sysctl.proc_translated")));
     Identity {
         name,
         vendor,
         arch,
+        translated,
         ..Identity::default()
     }
 }
@@ -535,6 +541,38 @@ mod tests {
                 .any(|d| d.from == "ioreg:pmgr:voltage-states5-sram"),
             "{:?}",
             cpu.diagnostics
+        );
+    }
+
+    #[test]
+    fn rosetta_reports_the_real_chip() {
+        let cpu = crate::test_support::fixture("apple-m5-rosetta");
+        assert_eq!(
+            cpu.identity.translated,
+            Some(Fact::detected(true, "sysctl:sysctl.proc_translated"))
+        );
+        assert_eq!(value(&cpu.identity.name).as_deref(), Some("Apple M5"));
+        assert_eq!(value(&cpu.identity.arch).as_deref(), Some("arm64"));
+        assert_eq!(
+            cpu.identity.x86_family, None,
+            "Rosetta's fake family 6 is ignored"
+        );
+        assert_eq!(
+            value(&cpu.clusters[0].clock.max),
+            Some(Hertz(4_464_000_000)),
+            "not the fake 2.4 GHz"
+        );
+        assert!(
+            cpu.features.raw.iter().all(|f| !f.contains("SSE")),
+            "no emulated x86 features"
+        );
+    }
+
+    #[test]
+    fn native_runs_are_not_marked_translated() {
+        assert_eq!(
+            crate::test_support::fixture("apple-m5").identity.translated,
+            None
         );
     }
 }

@@ -581,3 +581,114 @@ arch = "x86"
 name = "SMAP"
 group = "security"
 desc = "Supervisor mode access prevention"
+
+# --- macOS on Intel: machdep.cpu.features and machdep.cpu.leaf7_features ---
+
+[[feature]]
+raw = "SSE4.2"
+arch = "x86"
+name = "SSE4.2"
+group = "simd"
+desc = "Streaming SIMD Extensions 4.2"
+
+[[feature]]
+raw = "AVX1.0"
+arch = "x86"
+name = "AVX"
+group = "simd"
+desc = "256-bit Advanced Vector Extensions"
+
+[[feature]]
+raw = "AVX2"
+arch = "x86"
+name = "AVX2"
+group = "simd"
+desc = "256-bit integer vector instructions"
+
+[[feature]]
+raw = "FMA"
+arch = "x86"
+name = "FMA"
+group = "simd"
+desc = "Fused multiply-add"
+
+[[feature]]
+raw = "AVX512F"
+arch = "x86"
+family = "AVX-512"
+name = "F"
+group = "simd"
+desc = "AVX-512 foundation"
+
+[[feature]]
+raw = "AVX512BW"
+arch = "x86"
+family = "AVX-512"
+name = "BW"
+group = "simd"
+desc = "AVX-512 byte and word instructions"
+
+[[feature]]
+raw = "AVX512DQ"
+arch = "x86"
+family = "AVX-512"
+name = "DQ"
+group = "simd"
+desc = "AVX-512 doubleword and quadword instructions"
+
+[[feature]]
+raw = "AVX512VL"
+arch = "x86"
+family = "AVX-512"
+name = "VL"
+group = "simd"
+desc = "AVX-512 on 128- and 256-bit registers"
+
+[[feature]]
+raw = "AES"
+arch = "x86"
+name = "AES"
+group = "crypto"
+desc = "AES encryption instructions"
+
+[[feature]]
+raw = "PCLMULQDQ"
+arch = "x86"
+name = "PCLMUL"
+group = "crypto"
+desc = "Carry-less multiply, used by AES-GCM"
+
+[[feature]]
+raw = "RDRAND"
+arch = "x86"
+name = "RDRAND"
+group = "crypto"
+desc = "Hardware random number generator"
+
+[[feature]]
+raw = "RDSEED"
+arch = "x86"
+name = "RDSEED"
+group = "crypto"
+desc = "Hardware entropy source"
+
+[[feature]]
+raw = "VMX"
+arch = "x86"
+name = "VT-x"
+group = "virtualization"
+desc = "Intel hardware virtualization"
+
+[[feature]]
+raw = "SMEP"
+arch = "x86"
+name = "SMEP"
+group = "security"
+desc = "Supervisor mode execution prevention"
+
+[[feature]]
+raw = "SMAP"
+arch = "x86"
+name = "SMAP"
+group = "security"
+desc = "Supervisor mode access prevention"

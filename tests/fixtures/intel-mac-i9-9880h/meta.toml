@@ -1,0 +1,7 @@
+snapshot_version = 1
+cpu_version = "0.1.0"
+os = "macos"
+arch = "x86_64"
+kernel = "23.6.0"
+created_unix = 1790208000
+note = "SYNTHETIC: 2019 MacBook Pro, Intel Core i9-9880H (8 cores, 16 threads); not captured from hardware"

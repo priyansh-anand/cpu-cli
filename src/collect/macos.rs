@@ -19,6 +19,10 @@ pub fn collect(sys: &dyn Sysctl, ioreg: &dyn IoReg) -> Cpu {
         ioreg,
         diagnostics: Vec::new(),
     };
+    // Apple Silicon, natively or under Rosetta, reports hw.optional.arm64 = 1.
+    if !r.flag("hw.optional.arm64") && sys.string("machdep.cpu.vendor").is_some() {
+        return intel(&mut r);
+    }
     let identity = identity(&mut r);
     let topology = topology(&mut r);
     let clusters = clusters(&mut r, &topology);
@@ -104,6 +108,33 @@ impl Reader<'_> {
         }
     }
 
+    /// A non-negative integer (a stepping may be 0).
+    fn number(&mut self, key: &str) -> F<u32> {
+        let raw = self.sys.get(key)?;
+        match raw.as_i64().and_then(|n| u32::try_from(n).ok()) {
+            Some(n) => Some(Fact::detected(n, source(key))),
+            None => {
+                self.reject(key, "expected a non-negative number".to_string());
+                None
+            }
+        }
+    }
+
+    fn hertz(&mut self, key: &str) -> F<Hertz> {
+        let raw = self.sys.get(key)?;
+        match raw
+            .as_i64()
+            .and_then(|n| u64::try_from(n).ok())
+            .filter(|n| (100_000_000..=10_000_000_000).contains(n))
+        {
+            Some(hz) => Some(Fact::detected(Hertz(hz), source(key))),
+            None => {
+                self.reject(key, "implausible frequency".to_string());
+                None
+            }
+        }
+    }
+
     fn flag(&self, key: &str) -> bool {
         self.sys.int(key) == Some(1)
     }
@@ -130,6 +161,114 @@ pub(crate) fn max_frequency(table: &[u8]) -> Option<u64> {
         .max()?;
     let hz = if max >= 100_000_000 { max } else { max * 1000 };
     (100_000_000..=10_000_000_000).contains(&hz).then_some(hz)
+}
+
+/// Intel Macs: `machdep.cpu.*` identity and features, `hw.*` caches and clocks.
+/// `hw.cacheconfig` lists the logical CPUs sharing each level (index 1 is L1, 2 is L2, 3 is L3),
+/// so CPUID isn't needed.
+fn intel(r: &mut Reader) -> Cpu {
+    let identity = Identity {
+        vendor: r.text("machdep.cpu.vendor").map(|f| {
+            let value = if f.value == "GenuineIntel" {
+                "Intel".to_string()
+            } else {
+                f.value
+            };
+            Fact {
+                value,
+                origin: f.origin,
+            }
+        }),
+        name: r.text("machdep.cpu.brand_string"),
+        arch: r
+            .flag("hw.optional.x86_64")
+            .then(|| Fact::detected("x86_64".to_string(), source("hw.optional.x86_64"))),
+        x86_family: r.number("machdep.cpu.family"),
+        x86_model: r.number("machdep.cpu.model"),
+        x86_stepping: r.number("machdep.cpu.stepping"),
+        microcode: r.number("machdep.cpu.microcode_version").map(|f| Fact {
+            value: format!("{:#x}", f.value),
+            origin: f.origin,
+        }),
+        ..Identity::default()
+    };
+    let topology = topology(r);
+    let smt = topology.smt_per_core.as_ref().map_or(1, |f| f.value);
+    let sharers: Vec<u32> = r
+        .sys
+        .string("hw.cacheconfig")
+        .map(|s| {
+            s.split_whitespace()
+                .filter_map(|n| n.parse().ok())
+                .collect()
+        })
+        .unwrap_or_default();
+    let mut caches = Vec::new();
+    for (key, level, kind, index) in [
+        ("hw.l1icachesize", 1, CacheKind::Instruction, 1),
+        ("hw.l1dcachesize", 1, CacheKind::Data, 1),
+        ("hw.l2cachesize", 2, CacheKind::Unified, 2),
+        ("hw.l3cachesize", 3, CacheKind::Unified, 3),
+    ] {
+        let Some(size) = r.cache_size(key) else {
+            continue;
+        };
+        let shared_by = sharers
+            .get(index)
+            .copied()
+            .filter(|n| *n > 0)
+            .map(|n| Fact::detected(n, source("hw.cacheconfig")));
+        let cores = shared_by
+            .as_ref()
+            .filter(|s| s.value % smt == 0)
+            .map(|s| Fact::derived(s.value / smt));
+        let instances = ratio(&topology.logical_cpus, &shared_by);
+        caches.push(Cache {
+            level,
+            kind,
+            size: Some(size),
+            shared_by,
+            cores,
+            instances,
+        });
+    }
+    let base = r.hertz("hw.cpufrequency");
+    // Intel Macs usually report the nominal clock here, not turbo; only a higher value says anything.
+    let max = r
+        .hertz("hw.cpufrequency_max")
+        .filter(|m| base.as_ref().is_none_or(|b| m.value > b.value));
+    let cluster = Cluster {
+        kind: CoreKind::Uniform,
+        name: None,
+        cores: topology.physical_cores.clone(),
+        threads: topology.logical_cpus.clone(),
+        clock: Clocks {
+            base,
+            max,
+            current: None,
+        },
+        caches,
+    };
+    let flags: Vec<String> = [
+        "machdep.cpu.features",
+        "machdep.cpu.leaf7_features",
+        "machdep.cpu.extfeatures",
+    ]
+    .iter()
+    .filter_map(|key| r.sys.string(key))
+    .flat_map(|s| s.split_whitespace().map(str::to_string).collect::<Vec<_>>())
+    .collect();
+    let mut flags = flags;
+    flags.sort();
+    flags.dedup();
+    Cpu {
+        identity,
+        topology,
+        clusters: vec![cluster],
+        shared_caches: Vec::new(),
+        features: features::group(flags, Arch::X86),
+        diagnostics: std::mem::take(&mut r.diagnostics),
+    }
 }
 
 fn source(key: &str) -> String {
@@ -573,6 +712,96 @@ mod tests {
         assert_eq!(
             crate::test_support::fixture("apple-m5").identity.translated,
             None
+        );
+    }
+
+    #[test]
+    fn intel_mac_identity_and_topology() {
+        let cpu = crate::test_support::fixture("intel-mac-i9-9880h");
+        let id = &cpu.identity;
+        assert_eq!(
+            value(&id.name).as_deref(),
+            Some("Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz")
+        );
+        assert_eq!(value(&id.vendor).as_deref(), Some("Intel"));
+        assert_eq!(value(&id.arch).as_deref(), Some("x86_64"));
+        assert_eq!(
+            (
+                value(&id.x86_family),
+                value(&id.x86_model),
+                value(&id.x86_stepping)
+            ),
+            (Some(6), Some(158), Some(13))
+        );
+        assert_eq!(value(&id.microcode).as_deref(), Some("0xf8"));
+        let t = &cpu.topology;
+        assert_eq!(
+            (
+                value(&t.physical_cores),
+                value(&t.logical_cpus),
+                value(&t.smt_per_core)
+            ),
+            (Some(8), Some(16), Some(2))
+        );
+    }
+
+    /// (level, size, shared_by, cores, instances)
+    type Shape = (u8, Option<Bytes>, Option<u32>, Option<u32>, Option<u32>);
+
+    #[test]
+    fn intel_mac_caches_use_cacheconfig_for_sharing() {
+        let cpu = crate::test_support::fixture("intel-mac-i9-9880h");
+        assert_eq!(cpu.clusters.len(), 1);
+        let shapes: Vec<Shape> = cpu.clusters[0]
+            .caches
+            .iter()
+            .map(|k| {
+                (
+                    k.level,
+                    value(&k.size),
+                    value(&k.shared_by),
+                    value(&k.cores),
+                    value(&k.instances),
+                )
+            })
+            .collect();
+        assert_eq!(
+            shapes,
+            [
+                (1, Some(Bytes(32 << 10)), Some(2), Some(1), Some(8)),
+                (1, Some(Bytes(32 << 10)), Some(2), Some(1), Some(8)),
+                (2, Some(Bytes(256 << 10)), Some(2), Some(1), Some(8)),
+                (3, Some(Bytes(16 << 20)), Some(16), Some(8), Some(1)),
+            ]
+        );
+    }
+
+    #[test]
+    fn intel_mac_hides_a_max_equal_to_base() {
+        let cpu = crate::test_support::fixture("intel-mac-i9-9880h");
+        let clock = &cpu.clusters[0].clock;
+        assert_eq!(value(&clock.base), Some(Hertz(2_300_000_000)));
+        assert_eq!(
+            clock.max, None,
+            "hw.cpufrequency_max is the nominal clock, not turbo"
+        );
+    }
+
+    #[test]
+    fn intel_mac_features_are_x86() {
+        let cpu = crate::test_support::fixture("intel-mac-i9-9880h");
+        let names: Vec<&str> = cpu
+            .features
+            .groups
+            .iter()
+            .flat_map(|g| g.features.iter().map(|f| f.name.as_str()))
+            .collect();
+        assert_eq!(
+            names,
+            [
+                "SSE4.2", "AVX", "AVX2", "FMA", "AES", "PCLMUL", "RDRAND", "RDSEED", "VT-x",
+                "SMEP", "SMAP"
+            ]
         );
     }
 }

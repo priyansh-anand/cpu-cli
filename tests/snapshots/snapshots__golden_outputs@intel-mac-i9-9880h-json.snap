@@ -1,0 +1,326 @@
+---
+source: tests/snapshots.rs
+expression: "render(&cpu, mode, false)"
+---
+{
+  "schema_version": 1,
+  "identity": {
+    "vendor": {
+      "value": "Intel",
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.vendor"
+    },
+    "name": {
+      "value": "Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz",
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.brand_string"
+    },
+    "arch": {
+      "value": "x86_64",
+      "origin": "detected",
+      "from": "sysctl:hw.optional.x86_64"
+    },
+    "x86_family": {
+      "value": 6,
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.family"
+    },
+    "x86_model": {
+      "value": 158,
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.model"
+    },
+    "x86_stepping": {
+      "value": 13,
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.stepping"
+    },
+    "microcode": {
+      "value": "0xf8",
+      "origin": "detected",
+      "from": "sysctl:machdep.cpu.microcode_version"
+    }
+  },
+  "topology": {
+    "sockets": {
+      "value": 1,
+      "origin": "detected",
+      "from": "sysctl:hw.packages"
+    },
+    "physical_cores": {
+      "value": 8,
+      "origin": "detected",
+      "from": "sysctl:hw.physicalcpu"
+    },
+    "logical_cpus": {
+      "value": 16,
+      "origin": "detected",
+      "from": "sysctl:hw.logicalcpu"
+    },
+    "smt_per_core": {
+      "value": 2,
+      "origin": "derived"
+    }
+  },
+  "clusters": [
+    {
+      "kind": "uniform",
+      "cores": {
+        "value": 8,
+        "origin": "detected",
+        "from": "sysctl:hw.physicalcpu"
+      },
+      "threads": {
+        "value": 16,
+        "origin": "detected",
+        "from": "sysctl:hw.logicalcpu"
+      },
+      "clock": {
+        "base": {
+          "value": 2300000000,
+          "origin": "detected",
+          "from": "sysctl:hw.cpufrequency"
+        }
+      },
+      "caches": [
+        {
+          "level": 1,
+          "kind": "instruction",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "sysctl:hw.l1icachesize"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "detected",
+            "from": "sysctl:hw.cacheconfig"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 1,
+          "kind": "data",
+          "size": {
+            "value": 32768,
+            "origin": "detected",
+            "from": "sysctl:hw.l1dcachesize"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "detected",
+            "from": "sysctl:hw.cacheconfig"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 2,
+          "kind": "unified",
+          "size": {
+            "value": 262144,
+            "origin": "detected",
+            "from": "sysctl:hw.l2cachesize"
+          },
+          "shared_by": {
+            "value": 2,
+            "origin": "detected",
+            "from": "sysctl:hw.cacheconfig"
+          },
+          "cores": {
+            "value": 1,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 8,
+            "origin": "derived"
+          }
+        },
+        {
+          "level": 3,
+          "kind": "unified",
+          "size": {
+            "value": 16777216,
+            "origin": "detected",
+            "from": "sysctl:hw.l3cachesize"
+          },
+          "shared_by": {
+            "value": 16,
+            "origin": "detected",
+            "from": "sysctl:hw.cacheconfig"
+          },
+          "cores": {
+            "value": 8,
+            "origin": "derived"
+          },
+          "instances": {
+            "value": 1,
+            "origin": "derived"
+          }
+        }
+      ]
+    }
+  ],
+  "features": {
+    "groups": [
+      {
+        "group": "simd",
+        "features": [
+          {
+            "raw": "SSE4.2",
+            "name": "SSE4.2"
+          },
+          {
+            "raw": "AVX1.0",
+            "name": "AVX"
+          },
+          {
+            "raw": "AVX2",
+            "name": "AVX2"
+          },
+          {
+            "raw": "FMA",
+            "name": "FMA"
+          }
+        ]
+      },
+      {
+        "group": "crypto",
+        "features": [
+          {
+            "raw": "AES",
+            "name": "AES"
+          },
+          {
+            "raw": "PCLMULQDQ",
+            "name": "PCLMUL"
+          },
+          {
+            "raw": "RDRAND",
+            "name": "RDRAND"
+          },
+          {
+            "raw": "RDSEED",
+            "name": "RDSEED"
+          }
+        ]
+      },
+      {
+        "group": "virtualization",
+        "features": [
+          {
+            "raw": "VMX",
+            "name": "VT-x"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "features": [
+          {
+            "raw": "SMEP",
+            "name": "SMEP"
+          },
+          {
+            "raw": "SMAP",
+            "name": "SMAP"
+          }
+        ]
+      }
+    ],
+    "raw": [
+      "ACPI",
+      "ADX",
+      "AES",
+      "APIC",
+      "AVX1.0",
+      "AVX2",
+      "BMI1",
+      "BMI2",
+      "CLFSH",
+      "CLFSOPT",
+      "CMOV",
+      "CX16",
+      "CX8",
+      "DE",
+      "DS",
+      "DSCPL",
+      "DTES64",
+      "ERMS",
+      "EST",
+      "F16C",
+      "FMA",
+      "FPU",
+      "FPU_CSDS",
+      "FXSR",
+      "HLE",
+      "HTT",
+      "IBRS",
+      "INVPCID",
+      "IPT",
+      "L1DF",
+      "MCA",
+      "MCE",
+      "MDCLEAR",
+      "MMX",
+      "MON",
+      "MOVBE",
+      "MPX",
+      "MSR",
+      "MTRR",
+      "OSXSAVE",
+      "PAE",
+      "PAT",
+      "PBE",
+      "PCID",
+      "PCLMULQDQ",
+      "PDCM",
+      "PGE",
+      "POPCNT",
+      "PSE",
+      "PSE36",
+      "RDRAND",
+      "RDSEED",
+      "RDWRFSGS",
+      "RTM",
+      "SEGLIM64",
+      "SEP",
+      "SGX",
+      "SMAP",
+      "SMEP",
+      "SS",
+      "SSBD",
+      "SSE",
+      "SSE2",
+      "SSE3",
+      "SSE4.1",
+      "SSE4.2",
+      "SSSE3",
+      "STIBP",
+      "TM",
+      "TM2",
+      "TPR",
+      "TSC",
+      "TSCTMR",
+      "TSC_THREAD_OFFSET",
+      "TSXFA",
+      "VME",
+      "VMX",
+      "XSAVE",
+      "x2APIC"
+    ]
+  }
+}

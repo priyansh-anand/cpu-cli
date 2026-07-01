@@ -78,9 +78,24 @@ pub fn choose(json: bool, plain: bool, color: ColorChoice, term: &Terminal) -> (
 pub fn render(cpu: &Cpu, mode: Mode, color: bool) -> String {
     match mode {
         Mode::Json => json::render(cpu),
-        Mode::Plain => plain::render(&view::build(cpu, &view::ASCII)),
-        Mode::Boxed => boxed::render(&view::build(cpu, &view::UNICODE), color),
+        Mode::Plain => with_footnote(
+            plain::render(&view::build(cpu, &view::ASCII)),
+            view::footnote(cpu, &view::ASCII),
+        ),
+        Mode::Boxed => with_footnote(
+            boxed::render(&view::build(cpu, &view::UNICODE), color),
+            view::footnote(cpu, &view::UNICODE),
+        ),
     }
+}
+
+fn with_footnote(mut text: String, note: Option<String>) -> String {
+    if let Some(note) = note {
+        text.push('\n');
+        text.push_str(&note);
+        text.push('\n');
+    }
+    text
 }
 
 /// Writes output, treating a closed pipe (`cpu | head -1`) as success rather than an error.

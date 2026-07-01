@@ -222,7 +222,11 @@ mod tests {
             "linux-arm64-apple-vm",
         ] {
             let text = render(&build(&fixture(name), &UNICODE), false);
-            let widths: std::collections::BTreeSet<usize> = text.lines().map(width).collect();
+            let widths: std::collections::BTreeSet<usize> = text
+                .lines()
+                .filter(|l| l.starts_with(['╭', '│', '├', '╰']))
+                .map(width)
+                .collect();
             assert_eq!(widths.len(), 1, "{name}:\n{text}");
         }
     }

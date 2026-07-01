@@ -3,8 +3,8 @@ source: tests/snapshots.rs
 expression: "render(&cpu, mode, false)"
 ---
 Identity
-  Name          Neoverse-N1
-  Vendor        ARM
+  Name          Neoverse-N1 *
+  Vendor        ARM *
   Architecture  aarch64
   Hypervisor    KVM/QEMU, topology as reported by guest
 
@@ -15,3 +15,5 @@ Features
   SIMD    NEON, FP16, DotProd
   Crypto  AES, PMULL, SHA1, SHA256, CRC32
   Other   LSE
+
+* from a built-in table: arm-midr@2026-09

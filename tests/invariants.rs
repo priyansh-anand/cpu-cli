@@ -127,7 +127,15 @@ fn rendered_output_never_shows_unknowns() {
 fn boxed_lines_have_equal_width() {
     for (name, path) in common::fixtures() {
         let text = render(&common::load(&path), Mode::Boxed, false);
-        let widths: BTreeSet<usize> = text.lines().map(UnicodeWidthStr::width).collect();
+        let widths: BTreeSet<usize> = text
+            .lines()
+            .filter(|l| l.starts_with(['╭', '│', '├', '╰']))
+            .map(UnicodeWidthStr::width)
+            .collect();
+        assert!(
+            text.lines().all(|l| UnicodeWidthStr::width(l) <= 80),
+            "{name}: a line is wider than 80 columns:\n{text}"
+        );
         assert_eq!(widths.len(), 1, "{name}:\n{text}");
         assert!(
             widths.iter().all(|w| *w <= 80),

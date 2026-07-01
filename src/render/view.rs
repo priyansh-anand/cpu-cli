@@ -3,7 +3,7 @@
 
 use unicode_width::UnicodeWidthStr;
 
-use crate::model::{Cache, CacheKind, Clocks, Cluster, Cpu, F};
+use crate::model::{Cache, CacheKind, Clocks, Cluster, Cpu, F, Origin};
 use crate::units::Hertz;
 
 /// Longest a value line may get before wrapping onto the next line.
@@ -16,17 +16,21 @@ pub struct Glyphs {
     pub set_sep: &'static str,
     /// In counts: `4 × Super`, `×2`.
     pub times: &'static str,
+    /// Marks a value from a built-in table.
+    pub dagger: &'static str,
 }
 
 pub const UNICODE: Glyphs = Glyphs {
     sep: " · ",
     set_sep: " · ",
     times: "×",
+    dagger: "†",
 };
 pub const ASCII: Glyphs = Glyphs {
     sep: ", ",
     set_sep: " | ",
     times: "x",
+    dagger: "*",
 };
 
 #[derive(Debug, PartialEq)]
@@ -149,11 +153,41 @@ pub fn format_cpu_list(cpus: &[u32]) -> String {
     ranges.join(",")
 }
 
+/// A value's text, marked when it came from a built-in table rather than the machine.
+fn shown<T: ToString>(fact: &F<T>, g: &Glyphs) -> Option<String> {
+    let f = fact.as_ref()?;
+    Some(match f.origin {
+        Origin::Database(_) => format!("{} {}", f.value.to_string(), g.dagger),
+        _ => f.value.to_string(),
+    })
+}
+
+/// A cluster's heading, marked like [`shown`] when its name came from a built-in table.
+fn cluster_label(cluster: &Cluster, g: &Glyphs) -> String {
+    shown(&cluster.name, g).unwrap_or_else(|| cluster.kind.label().to_string())
+}
+
+/// `† from a built-in table: arm-midr@2026-09`, when any shown value came from one.
+pub fn footnote(cpu: &Cpu, g: &Glyphs) -> Option<String> {
+    let mut tables: Vec<&str> = [&cpu.identity.name, &cpu.identity.vendor]
+        .into_iter()
+        .chain(cpu.clusters.iter().map(|c| &c.name))
+        .filter_map(|f| match f.as_ref()?.origin {
+            Origin::Database(table) => Some(table),
+            _ => None,
+        })
+        .collect();
+    tables.sort_unstable();
+    tables.dedup();
+    (!tables.is_empty())
+        .then(|| format!("{} from a built-in table: {}", g.dagger, tables.join(", ")))
+}
+
 pub fn build(cpu: &Cpu, g: &Glyphs) -> Vec<Section> {
     [
         identity(cpu, g),
         topology(cpu, g),
-        clocks(cpu),
+        clocks(cpu, g),
         cache(cpu, g),
         features(cpu, g),
     ]
@@ -210,8 +244,8 @@ fn identity(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
     pairs(
         "Identity",
         vec![
-            ("Name", one(val(&id.name))),
-            ("Vendor", one(val(&id.vendor))),
+            ("Name", one(shown(&id.name, g))),
+            ("Vendor", one(shown(&id.vendor, g))),
             ("Architecture", one(arch)),
             ("Microcode", one(val(&id.microcode))),
             ("Hypervisor", hypervisor),
@@ -242,8 +276,8 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
         cpu.clusters
             .iter()
             .map(|c| match &c.cores {
-                Some(n) => format!("{} {} {}", n.value, g.times, c.label()),
-                None => c.label().to_string(),
+                Some(n) => format!("{} {} {}", n.value, g.times, cluster_label(c, g)),
+                None => cluster_label(c, g),
             })
             .collect::<Vec<_>>()
             .join(g.sep)
@@ -284,7 +318,7 @@ fn clock<'a>(clocks: &'a Clocks, label: &str) -> &'a F<Hertz> {
     }
 }
 
-fn clocks(cpu: &Cpu) -> Option<Section> {
+fn clocks(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
     let clusters: Vec<&Cluster> = cpu
         .clusters
         .iter()
@@ -307,7 +341,7 @@ fn clocks(cpu: &Cpu) -> Option<Section> {
     if rows.is_empty() {
         return None;
     }
-    let columns = clusters.iter().map(|c| c.label().to_string()).collect();
+    let columns = clusters.iter().map(|c| cluster_label(c, g)).collect();
     Some(Section {
         title: "Clocks",
         body: Body::Grid(Grid {
@@ -381,7 +415,7 @@ fn cache(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
             }),
     );
     rows.sort_by_key(|(key, _)| *key);
-    let columns = clusters.iter().map(|c| c.label().to_string()).collect();
+    let columns = clusters.iter().map(|c| cluster_label(c, g)).collect();
     let rows = rows.into_iter().map(|(_, row)| row).collect();
     Some(Section {
         title: "Cache",
@@ -751,5 +785,22 @@ mod tests {
             row(&s, "Architecture").lines,
             ["arm64 · x86_64 binary running under Rosetta 2"]
         );
+    }
+
+    #[test]
+    fn table_values_are_marked_and_footnoted() {
+        let cpu = fixture("linux-arm64-oci-a1");
+        let s = build(&cpu, &UNICODE);
+        assert_eq!(row(&s, "Name").lines, ["Neoverse-N1 †"]);
+        assert_eq!(row(&s, "Vendor").lines, ["ARM †"]);
+        assert_eq!(
+            footnote(&cpu, &UNICODE).as_deref(),
+            Some("† from a built-in table: arm-midr@2026-09")
+        );
+        assert_eq!(
+            footnote(&cpu, &ASCII).as_deref(),
+            Some("* from a built-in table: arm-midr@2026-09")
+        );
+        assert_eq!(footnote(&fixture("apple-m5"), &UNICODE), None);
     }
 }

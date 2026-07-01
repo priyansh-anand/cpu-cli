@@ -3,7 +3,7 @@ source: tests/snapshots.rs
 expression: "render(&cpu, mode, false)"
 ---
 Identity
-  Vendor        Apple
+  Vendor        Apple *
   Architecture  aarch64
   Hypervisor    Apple Virtualization, topology as reported by guest
 
@@ -15,3 +15,5 @@ Features
   Crypto    AES, PMULL, SHA1, SHA256, SHA512, SHA3, CRC32
   Security  PAC, BTI, DIT, SB
   Other     LSE, LSE2
+
+* from a built-in table: arm-midr@2026-09

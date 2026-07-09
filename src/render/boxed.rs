@@ -4,7 +4,7 @@
 
 use anstyle::{AnsiColor, Color, Style};
 
-use super::view::{Body, Grid, Pair, Section, column_widths, pad, width};
+use super::view::{Body, Grid, Pair, Section, grid_inner, grid_widths, pad, span_width, width};
 
 const TITLE: Style = Style::new().bold();
 const LABEL: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
@@ -39,34 +39,7 @@ impl Paint {
 }
 
 fn label_width(pairs: &[Pair]) -> usize {
-    pairs.iter().map(|p| width(p.label)).max().unwrap_or(0)
-}
-
-/// Column widths for a grid; the first column is widened so the title fits in its top border.
-/// Column widths for a grid: the first column fits the title in its top border, and the last
-/// column grows until every spanning row's text fits.
-fn grid_widths(title: &str, grid: &Grid) -> Vec<usize> {
-    let mut widths = column_widths(&grid.table());
-    widths[0] = widths[0].max(width(title) + 1);
-    for row in grid.rows.iter().filter(|r| r.span) {
-        widths[0] = widths[0].max(width(&row.label));
-        let text = row.cells.first().map_or(0, |c| width(c));
-        let available = span_width(&widths);
-        if text > available {
-            let last = widths.len() - 1;
-            widths[last] += text - available;
-        }
-    }
-    widths
-}
-
-/// Text width of a cell spanning every column after the first, including the separators it covers.
-fn span_width(widths: &[usize]) -> usize {
-    widths[1..].iter().sum::<usize>() + 3 * (widths.len() - 2)
-}
-
-fn grid_inner(widths: &[usize]) -> usize {
-    widths.iter().map(|w| w + 2).sum::<usize>() + widths.len() - 1
+    pairs.iter().map(|p| width(&p.label)).max().unwrap_or(0)
 }
 
 fn natural_inner(section: &Section) -> usize {
@@ -91,7 +64,7 @@ fn draw_pairs(out: &mut String, title: &str, pairs: &[Pair], inner: usize, paint
     out.push_str(&format!("╭ {} {dashes}╮\n", paint.cell(title, 0, TITLE)));
     for pair in pairs {
         for (i, line) in pair.lines.iter().enumerate() {
-            let label = if i == 0 { pair.label } else { "" };
+            let label = if i == 0 { pair.label.as_str() } else { "" };
             out.push_str(&format!(
                 "│ {}  {} │\n",
                 paint.cell(label, label_w, LABEL),

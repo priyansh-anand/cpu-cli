@@ -48,7 +48,7 @@ pub enum Body {
 /// A labelled value. Extra lines are wrapped continuations shown without a label.
 #[derive(Debug, PartialEq)]
 pub struct Pair {
-    pub label: &'static str,
+    pub label: String,
     pub lines: Vec<String>,
 }
 
@@ -183,12 +183,92 @@ pub fn footnote(cpu: &Cpu, g: &Glyphs) -> Option<String> {
         .then(|| format!("{} from a built-in table: {}", g.dagger, tables.join(", ")))
 }
 
+/// Column widths for a grid: the first column fits the title in its top border, and the last
+/// column grows until every spanning row's text fits.
+pub fn grid_widths(title: &str, grid: &Grid) -> Vec<usize> {
+    let mut widths = column_widths(&grid.table());
+    widths[0] = widths[0].max(width(title) + 1);
+    for row in grid.rows.iter().filter(|r| r.span) {
+        widths[0] = widths[0].max(width(&row.label));
+        let text = row.cells.first().map_or(0, |c| width(c));
+        let available = span_width(&widths);
+        if text > available {
+            let last = widths.len() - 1;
+            widths[last] += text - available;
+        }
+    }
+    widths
+}
+
+/// Text width of a cell spanning every column after the first, including the separators it covers.
+pub fn span_width(widths: &[usize]) -> usize {
+    widths[1..].iter().sum::<usize>() + 3 * (widths.len() - 2)
+}
+
+pub fn grid_inner(widths: &[usize]) -> usize {
+    widths.iter().map(|w| w + 2).sum::<usize>() + widths.len() - 1
+}
+
+/// Widest box content that still fits an 80-column terminal (80 minus the two borders).
+pub const MAX_INNER: usize = 78;
+
+/// A grid too wide for 80 columns becomes one row per cluster: `Label  L1d 48 KiB / core · ...`.
+fn fit(section: Section, g: &Glyphs) -> Section {
+    let Body::Grid(grid) = &section.body else {
+        return section;
+    };
+    if grid_inner(&grid_widths(section.title, grid)) <= MAX_INNER {
+        return section;
+    }
+    let mut pairs: Vec<Pair> = grid
+        .columns
+        .iter()
+        .enumerate()
+        .map(|(i, column)| {
+            let items: Vec<String> = grid
+                .rows
+                .iter()
+                .filter(|r| !r.span)
+                .filter_map(|r| {
+                    r.cells
+                        .get(i)
+                        .filter(|c| !c.is_empty())
+                        .map(|c| format!("{} {c}", r.label))
+                })
+                .collect();
+            let refs: Vec<&str> = items.iter().map(String::as_str).collect();
+            Pair {
+                label: column.clone(),
+                lines: wrap(&refs, g.sep, WRAP_WIDTH),
+            }
+        })
+        .filter(|p| !p.lines.is_empty())
+        .collect();
+    let shared: Vec<String> = grid
+        .rows
+        .iter()
+        .filter(|r| r.span)
+        .map(|r| format!("{} {}", r.label, r.cells.join("")))
+        .collect();
+    if !shared.is_empty() {
+        let refs: Vec<&str> = shared.iter().map(String::as_str).collect();
+        pairs.push(Pair {
+            label: "Shared".to_string(),
+            lines: wrap(&refs, g.sep, WRAP_WIDTH),
+        });
+    }
+    Section {
+        title: section.title,
+        body: Body::Pairs(pairs),
+    }
+}
+
 pub fn build(cpu: &Cpu, g: &Glyphs) -> Vec<Section> {
     [
         identity(cpu, g),
         topology(cpu, g),
-        clocks(cpu, g),
-        cache(cpu, g),
+        clocks(cpu, g).map(|s| fit(s, g)),
+        cache(cpu, g).map(|s| fit(s, g)),
         features(cpu, g),
     ]
     .into_iter()
@@ -201,9 +281,10 @@ fn pairs(title: &'static str, rows: Vec<(&'static str, Option<Vec<String>>)>) ->
     let rows: Vec<Pair> = rows
         .into_iter()
         .filter_map(|(label, lines)| {
-            lines
-                .filter(|l| !l.is_empty())
-                .map(|lines| Pair { label, lines })
+            lines.filter(|l| !l.is_empty()).map(|lines| Pair {
+                label: label.to_string(),
+                lines,
+            })
         })
         .collect();
     (!rows.is_empty()).then_some(Section {
@@ -280,7 +361,10 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                 None => cluster_label(c, g),
             })
             .collect::<Vec<_>>()
-            .join(g.sep)
+    });
+    let clusters = clusters.map(|items| {
+        let refs: Vec<&str> = items.iter().map(String::as_str).collect();
+        wrap(&refs, g.sep, WRAP_WIDTH)
     });
     let numa = (t.numa_nodes.len() > 1).then(|| {
         let lists: Vec<String> = t
@@ -304,7 +388,7 @@ fn topology(cpu: &Cpu, g: &Glyphs) -> Option<Section> {
                 "Cores",
                 (!cores.is_empty()).then(|| vec![cores.join(g.sep)]),
             ),
-            ("Clusters", one(clusters)),
+            ("Clusters", clusters),
             ("NUMA", numa),
         ],
     )
@@ -580,7 +664,10 @@ mod tests {
         assert_eq!(titles(&s), ["Identity", "Topology"]);
         match &s[1].body {
             Body::Pairs(pairs) => {
-                assert_eq!(pairs.iter().map(|p| p.label).collect::<Vec<_>>(), ["Cores"])
+                assert_eq!(
+                    pairs.iter().map(|p| p.label.as_str()).collect::<Vec<_>>(),
+                    ["Cores"]
+                )
             }
             Body::Grid(_) => panic!("topology is pairs"),
         }
@@ -802,5 +889,55 @@ mod tests {
             Some("* from a built-in table: arm-midr@2026-09")
         );
         assert_eq!(footnote(&fixture("apple-m5"), &UNICODE), None);
+    }
+
+    #[test]
+    fn wide_grids_become_rows() {
+        let caches = || {
+            vec![crate::model::Cache {
+                level: 2,
+                kind: CacheKind::Unified,
+                size: Some(Fact::derived(crate::units::Bytes(2 << 20))),
+                shared_by: Some(Fact::derived(4)),
+                cores: Some(Fact::derived(4)),
+                instances: Some(Fact::derived(1)),
+            }]
+        };
+        let cluster = |name: &str| Cluster {
+            name: Some(Fact::derived(name.to_string())),
+            caches: caches(),
+            ..Cluster::default()
+        };
+        let cpu = Cpu {
+            clusters: [
+                "Prime",
+                "Performance-high",
+                "Performance-mid",
+                "Efficiency-big",
+                "Efficiency-little",
+            ]
+            .map(cluster)
+            .to_vec(),
+            ..Cpu::default()
+        };
+        let s = build(&cpu, &UNICODE);
+        let cache = s.iter().find(|s| s.title == "Cache").unwrap();
+        let Body::Pairs(pairs) = &cache.body else {
+            panic!("expected rows per cluster")
+        };
+        let labels: Vec<&str> = pairs.iter().map(|p| p.label.as_str()).collect();
+        assert_eq!(
+            labels,
+            [
+                "Prime",
+                "Performance-high",
+                "Performance-mid",
+                "Efficiency-big",
+                "Efficiency-little"
+            ]
+        );
+        assert_eq!(pairs[0].lines, ["L2 2 MiB / 4 cores"]);
+        let text = super::super::boxed::render(&s, false);
+        assert!(text.lines().all(|l| width(l) <= 80), "{text}");
     }
 }

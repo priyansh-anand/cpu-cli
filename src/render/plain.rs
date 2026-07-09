@@ -19,10 +19,10 @@ pub fn render(sections: &[Section]) -> String {
         out.push(section.title.to_string());
         match &section.body {
             Body::Pairs(pairs) => {
-                let label_width = pairs.iter().map(|p| width(p.label)).max().unwrap_or(0);
+                let label_width = pairs.iter().map(|p| width(&p.label)).max().unwrap_or(0);
                 for pair in pairs {
                     for (j, line) in pair.lines.iter().enumerate() {
-                        let label = if j == 0 { pair.label } else { "" };
+                        let label = if j == 0 { pair.label.as_str() } else { "" };
                         let line = ascii(line);
                         out.push(
                             format!("  {}  {line}", pad(label, label_width))

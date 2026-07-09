@@ -79,22 +79,6 @@ fn newer_snapshot_version_exits_1() {
 }
 
 #[test]
-fn unidentifiable_machine_exits_1_and_asks_for_a_dump() {
-    let dir = tempfile::tempdir().unwrap();
-    std::fs::write(
-        dir.path().join("meta.toml"),
-        "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"macos\"\narch = \"aarch64\"\ncreated_unix = 0\n",
-    )
-    .unwrap();
-    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
-    assert_eq!(code, 1);
-    assert!(
-        err.contains("could not identify this CPU") && err.contains("cpu --dump"),
-        "{err}"
-    );
-}
-
-#[test]
 fn unknown_flag_exits_2() {
     let (code, _, _) = run(cpu().arg("--bogus"));
     assert_eq!(code, 2);
@@ -174,4 +158,85 @@ fn explain_conflicts_with_json() {
         .arg(fixture("apple-m5")));
     assert_eq!(code, 2);
     assert!(err.contains("cannot be used with"), "{err}");
+}
+
+#[test]
+fn dump_refuses_to_overwrite() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("taken.tar.gz");
+    std::fs::write(&path, "precious").unwrap();
+    let (code, _, err) = run(cpu().arg("--dump").arg(&path));
+    assert_eq!(code, 1);
+    assert!(err.contains("already exists"), "{err}");
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "precious");
+}
+
+#[test]
+fn dump_survives_a_closed_stdout() {
+    use std::process::Stdio;
+    let dir = tempfile::tempdir().unwrap();
+    let mut child = cpu()
+        .arg("--dump")
+        .arg(dir.path().join("d.tar.gz"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    drop(child.stdout.take());
+    let out = child.wait_with_output().unwrap();
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+#[test]
+fn a_panic_asks_for_a_dump() {
+    let (code, _, err) = run(cpu().env("CPU_TEST_PANIC", "1").arg("--plain"));
+    assert_eq!(code, 101);
+    assert!(
+        err.contains("this is a bug") && err.contains("cpu --dump"),
+        "{err}"
+    );
+}
+
+#[test]
+fn an_unidentifiable_snapshot_says_so() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("meta.toml"), "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"macos\"\narch = \"aarch64\"\ncreated_unix = 0\n").unwrap();
+    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(code, 1);
+    assert!(
+        err.contains("does not identify a CPU") && !err.contains("--dump"),
+        "{err}"
+    );
+}
+
+#[test]
+fn snapshot_errors_are_one_line() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("meta.toml"), "snapshot_version = [\n").unwrap();
+    let (_, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(err.trim_end().lines().count(), 1, "{err}");
+}
+
+#[test]
+fn a_wrapped_tarball_opens() {
+    let dir = tempfile::tempdir().unwrap();
+    let archive = dir.path().join("wrapped.tar.gz");
+    let status = Command::new("tar")
+        .env("COPYFILE_DISABLE", "1") // no macOS ._ metadata files
+        .arg("-czf")
+        .arg(&archive)
+        .arg("-C")
+        .arg(fixture(""))
+        .arg("apple-m5")
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let (code, out, err) = run(cpu().arg("--plain").arg("--from").arg(&archive));
+    assert_eq!(code, 0, "{err}");
+    assert!(out.contains("Apple M5"));
 }

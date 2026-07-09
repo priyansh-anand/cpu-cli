@@ -215,7 +215,13 @@ impl Snapshot {
 fn invalid(file: &str, err: impl fmt::Display) -> SnapshotError {
     SnapshotError::Invalid {
         file: file.to_string(),
-        message: err.to_string(),
+        // TOML errors span several lines with a caret diagram; one line reads better in a CLI.
+        message: err
+            .to_string()
+            .lines()
+            .next()
+            .unwrap_or_default()
+            .to_string(),
     }
 }
 
@@ -327,6 +333,15 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
             .to_string_lossy()
             .trim_start_matches("./")
             .to_string();
+        // A snapshot re-packed from its extracted directory has one top-level folder.
+        let name = if in_layout(&name) {
+            name
+        } else {
+            match name.split_once('/') {
+                Some((_, inner)) if in_layout(inner) => inner.to_string(),
+                _ => name,
+            }
+        };
         if !in_layout(&name) {
             continue;
         }

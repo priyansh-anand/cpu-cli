@@ -5,6 +5,7 @@ use std::io::{self, IsTerminal, Write};
 use crate::model::Cpu;
 
 pub mod boxed;
+pub mod explain;
 pub mod json;
 pub mod plain;
 pub mod view;
@@ -14,6 +15,7 @@ pub enum Mode {
     Boxed,
     Plain,
     Json,
+    Explain,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -59,9 +61,18 @@ pub fn locale_is_utf8(locale: Option<&str>) -> bool {
 
 /// Picks the output mode and whether to colour it. `--json` wins. Boxes need a UTF-8 locale and
 /// either a terminal or an explicit request for colour; everything else gets plain text.
-pub fn choose(json: bool, plain: bool, color: ColorChoice, term: &Terminal) -> (Mode, bool) {
+pub fn choose(
+    json: bool,
+    plain: bool,
+    explain: bool,
+    color: ColorChoice,
+    term: &Terminal,
+) -> (Mode, bool) {
     if json {
         return (Mode::Json, false);
+    }
+    if explain {
+        return (Mode::Explain, false);
     }
     let color_on = match color {
         ColorChoice::Always => true,
@@ -78,6 +89,7 @@ pub fn choose(json: bool, plain: bool, color: ColorChoice, term: &Terminal) -> (
 pub fn render(cpu: &Cpu, mode: Mode, color: bool) -> String {
     match mode {
         Mode::Json => json::render(cpu),
+        Mode::Explain => explain::render(cpu),
         Mode::Plain => with_footnote(
             plain::render(&view::build(cpu, &view::ASCII)),
             view::footnote(cpu, &view::ASCII),
@@ -122,7 +134,7 @@ mod tests {
     #[test]
     fn a_terminal_gets_colourful_boxes() {
         assert_eq!(
-            choose(false, false, ColorChoice::Auto, &term(true, true)),
+            choose(false, false, false, ColorChoice::Auto, &term(true, true)),
             (Mode::Boxed, true)
         );
     }
@@ -130,7 +142,7 @@ mod tests {
     #[test]
     fn pipes_get_plain() {
         assert_eq!(
-            choose(false, false, ColorChoice::Auto, &term(false, true)),
+            choose(false, false, false, ColorChoice::Auto, &term(false, true)),
             (Mode::Plain, false)
         );
     }
@@ -138,7 +150,7 @@ mod tests {
     #[test]
     fn json_always_wins() {
         assert_eq!(
-            choose(true, true, ColorChoice::Always, &term(true, true)),
+            choose(true, true, false, ColorChoice::Always, &term(true, true)),
             (Mode::Json, false)
         );
     }
@@ -146,7 +158,7 @@ mod tests {
     #[test]
     fn plain_flag_on_a_terminal() {
         assert_eq!(
-            choose(false, true, ColorChoice::Auto, &term(true, true)),
+            choose(false, true, false, ColorChoice::Auto, &term(true, true)),
             (Mode::Plain, false)
         );
     }
@@ -154,7 +166,7 @@ mod tests {
     #[test]
     fn non_utf8_locale_gets_plain() {
         assert_eq!(
-            choose(false, false, ColorChoice::Auto, &term(true, false)),
+            choose(false, false, false, ColorChoice::Auto, &term(true, false)),
             (Mode::Plain, false)
         );
     }
@@ -166,7 +178,7 @@ mod tests {
             ..term(true, true)
         };
         assert_eq!(
-            choose(false, false, ColorChoice::Auto, &t),
+            choose(false, false, false, ColorChoice::Auto, &t),
             (Mode::Boxed, false)
         );
     }
@@ -174,7 +186,7 @@ mod tests {
     #[test]
     fn color_always_boxes_a_pipe() {
         assert_eq!(
-            choose(false, false, ColorChoice::Always, &term(false, true)),
+            choose(false, false, false, ColorChoice::Always, &term(false, true)),
             (Mode::Boxed, true)
         );
     }
@@ -186,7 +198,7 @@ mod tests {
             ..term(false, true)
         };
         assert_eq!(
-            choose(false, false, ColorChoice::Auto, &t),
+            choose(false, false, false, ColorChoice::Auto, &t),
             (Mode::Boxed, true)
         );
     }
@@ -194,7 +206,7 @@ mod tests {
     #[test]
     fn color_never_on_a_terminal() {
         assert_eq!(
-            choose(false, false, ColorChoice::Never, &term(true, true)),
+            choose(false, false, false, ColorChoice::Never, &term(true, true)),
             (Mode::Boxed, false)
         );
     }
@@ -227,5 +239,17 @@ mod tests {
     #[test]
     fn other_write_errors_are_reported() {
         assert!(write_output(&mut Failing(io::ErrorKind::PermissionDenied), "x").is_err());
+    }
+
+    #[test]
+    fn explain_is_plain_text_and_json_still_wins() {
+        assert_eq!(
+            choose(false, false, true, ColorChoice::Always, &term(true, true)),
+            (Mode::Explain, false)
+        );
+        assert_eq!(
+            choose(true, false, true, ColorChoice::Auto, &term(true, true)),
+            (Mode::Json, false)
+        );
     }
 }

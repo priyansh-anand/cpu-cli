@@ -156,3 +156,22 @@ fn hostile_snapshot_values_never_reach_the_terminal() {
         assert!(!out.contains("pwned"), "{flags:?}: {out:?}");
     }
 }
+
+#[test]
+fn explain_lists_origins() {
+    let (code, out, _) = run(cpu()
+        .arg("--explain")
+        .arg("--from")
+        .arg(fixture("apple-m5")));
+    assert_eq!(code, 0);
+    assert!(out.contains("sysctl:hw.perflevel0.l2cachesize"), "{out}");
+}
+
+#[test]
+fn explain_conflicts_with_json() {
+    let (code, _, err) = run(cpu()
+        .args(["--explain", "--json", "--from"])
+        .arg(fixture("apple-m5")));
+    assert_eq!(code, 2);
+    assert!(err.contains("cannot be used with"), "{err}");
+}

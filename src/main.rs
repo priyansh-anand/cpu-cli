@@ -19,6 +19,10 @@ struct Args {
     #[arg(long)]
     plain: bool,
 
+    /// List every value with where it came from, then anything that was rejected
+    #[arg(long, conflicts_with_all = ["json", "plain"])]
+    explain: bool,
+
     /// Show a saved snapshot (directory or .tar.gz) instead of this machine
     #[arg(long, value_name = "SNAPSHOT")]
     from: Option<PathBuf>,
@@ -61,7 +65,13 @@ fn run(args: &Args) -> Result<(), String> {
                 .to_string(),
         );
     }
-    let (mode, color) = render::choose(args.json, args.plain, args.color, &Terminal::detect());
+    let (mode, color) = render::choose(
+        args.json,
+        args.plain,
+        args.explain,
+        args.color,
+        &Terminal::detect(),
+    );
     render::write_output(&mut io::stdout().lock(), &render::render(&cpu, mode, color))
         .map_err(|e| format!("could not write output: {e}"))
 }

@@ -154,10 +154,17 @@ const CLOCK_TABLES: [&str; 2] = ["voltage-states5-sram", "voltage-states1-sram"]
 /// Highest frequency in a `voltage-states*` table of 8-byte (frequency, voltage) little-endian u32
 /// entries. M1-M3 store hertz; the M5 stores kilohertz (4.46 GHz does not fit a u32 in hertz), so a
 /// maximum below 100 000 000 means kilohertz. Entries are not sorted, so the maximum is taken.
+/// `0xffffffff` entries are placeholders and are skipped; a length that is not a whole number of
+/// entries means the table is damaged, so nothing is read from it.
 pub(crate) fn max_frequency(table: &[u8]) -> Option<u64> {
+    if table.len() % 8 != 0 {
+        return None;
+    }
     let max = table
         .chunks_exact(8)
-        .map(|e| u64::from(u32::from_le_bytes([e[0], e[1], e[2], e[3]])))
+        .map(|e| u32::from_le_bytes([e[0], e[1], e[2], e[3]]))
+        .filter(|&f| f != u32::MAX)
+        .map(u64::from)
         .max()?;
     let hz = if max >= 100_000_000 { max } else { max * 1000 };
     (100_000_000..=10_000_000_000).contains(&hz).then_some(hz)
@@ -325,7 +332,9 @@ fn clusters(r: &mut Reader, topology: &Topology) -> Vec<Cluster> {
         None => 0,
     };
     if levels > 0 {
-        return (0..levels).map(|i| perflevel(r, i, levels)).collect();
+        let mut clusters: Vec<Cluster> = (0..levels).map(|i| perflevel(r, i, levels)).collect();
+        check_clocks(r, &mut clusters);
+        return clusters;
     }
     // No perflevel keys (macOS 11): one cluster with counts only. The top-level hw.l*cachesize
     // keys are deliberately ignored: on Apple Silicon they describe only the efficiency cores.
@@ -340,6 +349,29 @@ fn clusters(r: &mut Reader, topology: &Topology) -> Vec<Cluster> {
         clock: Clocks::default(),
         caches: Vec::new(),
     }]
+}
+
+/// The table-to-perflevel mapping is only known for a Performance + Efficiency pair, and it must
+/// put the faster table on the performance cores. Anything else drops both clocks: a missing
+/// clock is hidden, a wrong one is printed.
+fn check_clocks(r: &mut Reader, clusters: &mut [Cluster]) {
+    let [p, e] = clusters else { return };
+    let (Some(p_max), Some(e_max)) = (&p.clock.max, &e.clock.max) else {
+        return;
+    };
+    let problem = if e.name.as_ref().map(|n| n.value.as_str()) != Some("Efficiency") {
+        "clock tables are only mapped for Performance + Efficiency chips"
+    } else if p_max.value.0 <= e_max.value.0 {
+        "performance clock table is slower than the efficiency one"
+    } else {
+        return;
+    };
+    r.diagnostics.push(Diagnostic {
+        from: format!("ioreg:pmgr:{}", CLOCK_TABLES[0]),
+        message: problem.to_string(),
+    });
+    p.clock.max = None;
+    e.clock.max = None;
 }
 
 fn perflevel(r: &mut Reader, index: u32, levels: u32) -> Cluster {
@@ -802,6 +834,55 @@ mod tests {
                 "SSE4.2", "AVX", "AVX2", "FMA", "AES", "PCLMUL", "RDRAND", "RDSEED", "VT-x",
                 "SMEP", "SMAP"
             ]
+        );
+    }
+
+    #[test]
+    fn truncated_tables_and_placeholders_are_rejected() {
+        let hex = crate::source::ioreg::decode_hex;
+        let mut cut = hex(M5_P).unwrap();
+        cut.truncate(cut.len() - 4);
+        assert_eq!(
+            max_frequency(&cut),
+            None,
+            "a partial entry means the table is damaged"
+        );
+        let placeholder: Vec<u8> = [1_000_000_000u32, u32::MAX]
+            .iter()
+            .flat_map(|f| [f.to_le_bytes(), 0u32.to_le_bytes()].concat())
+            .collect();
+        assert_eq!(
+            max_frequency(&placeholder),
+            Some(1_000_000_000),
+            "0xffffffff is Apple's placeholder, not 4.29 GHz"
+        );
+    }
+
+    #[test]
+    fn clocks_need_an_efficiency_second_core_type() {
+        let cpu = collect(
+            &with(&[("hw.perflevel1.name", Some(Str("Performance".into())))]),
+            &m5_tables(),
+        );
+        assert!(
+            cpu.clusters.iter().all(|c| c.clock.is_empty()),
+            "the 5/1 table mapping is only known for P + E chips"
+        );
+    }
+
+    #[test]
+    fn a_slower_performance_table_is_rejected() {
+        let hex = crate::source::ioreg::decode_hex;
+        let swapped = BTreeMap::from([
+            ("pmgr:voltage-states5-sram".to_string(), hex(M5_E).unwrap()),
+            ("pmgr:voltage-states1-sram".to_string(), hex(M5_P).unwrap()),
+        ]);
+        let cpu = collect(&with(&[]), &swapped);
+        assert!(cpu.clusters.iter().all(|c| c.clock.is_empty()));
+        assert!(
+            cpu.diagnostics.iter().any(|d| d.message.contains("slower")),
+            "{:?}",
+            cpu.diagnostics
         );
     }
 }

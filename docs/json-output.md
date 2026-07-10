@@ -7,7 +7,7 @@
 ```json
 {
   "schema_version": 1,
-  "identity":      { "name": FACT, "vendor": FACT, "arch": FACT, ... },
+  "identity":      { "name": FACT, "vendor": FACT, "arch": FACT, "translated": FACT, ... },
   "topology":      { "sockets": FACT, "physical_cores": FACT, "logical_cpus": FACT, "smt_per_core": FACT },
   "clusters":      [ CLUSTER, ... ],
   "shared_caches": [ CACHE, ... ],
@@ -61,6 +61,8 @@ A cluster is a **group of cores of one type**, e.g. `Super` and `Efficiency` on 
 ```
 
 - `kind` is `performance`, `efficiency` or `uniform`; `name` is the OS's own label when it has one.
+- A cache's `cores` is the number of physical cores sharing one instance, when known (`shared_by` counts logical CPUs, which differs with SMT).
+- A cache level can appear more than once in a cluster when its instances differ, for example an X3D chiplet's larger L3 or a smaller low-power module; each entry describes one shape, and `size x instances` summed over them is the total.
 - A cache's `size` is **one instance**. `shared_by` is how many logical CPUs share one instance, and `instances` is how many exist in the cluster. Total capacity is `size × instances`.
 
 ### Features

@@ -28,7 +28,7 @@
 ╰──────────────────────────────────────────────────────────────────╯
 ```
 
-> **Status: early development.** macOS on Apple Silicon and Linux (x86-64 and ARM64) are supported today. Intel Macs are in progress; see [Platform support](#platform-support).
+> **Status: early development.** Supported today: macOS (Apple Silicon, including x86 builds under Rosetta 2, and Intel) and Linux (x86-64 and ARM64); see [Platform support](#platform-support).
 
 ## Why
 
@@ -54,6 +54,7 @@ This installs a single `cpu` binary into `~/.cargo/bin`. (The crates.io package 
 cpu                      # boxed tables in a terminal
 cpu --plain              # aligned ASCII text: no boxes, no colour
 cpu --json               # machine-readable output (see below)
+cpu --explain            # every value and where it came from
 cpu --dump               # save this machine's raw CPU data for a bug report
 cpu --from snapshot.tar.gz   # show a saved snapshot instead of this machine
 ```
@@ -62,9 +63,10 @@ cpu --from snapshot.tar.gz   # show a saved snapshot instead of this machine
 |---|---|
 | `--json` | Print JSON (`schema_version` 1). Overrides every display option. |
 | `--plain` | Print plain text: ASCII only, no box drawing, no escape codes. |
+| `--explain` | List every value with its origin, then anything that was rejected. Plain text; can't be combined with `--json` or `--plain`. |
 | `--color auto\|always\|never` | When to use colour. Default `auto`. |
 | `--from <SNAPSHOT>` | Read a snapshot directory or `.tar.gz` instead of the live machine. |
-| `--dump [FILE]` | Write a snapshot to `FILE` (default `./cpu-dump-<unix-time>.tar.gz`) and print its path. |
+| `--dump [FILE]` | Write a snapshot to `FILE` (default `./cpu-dump-<UTC time>.tar.gz`) and print its path. Never overwrites an existing file. |
 
 ### Output modes, pipes and colour
 
@@ -111,10 +113,10 @@ The full contract is [`schema/cpu.v1.json`](schema/cpu.v1.json); compatibility r
 
 ```sh
 cpu --dump
-# ./cpu-dump-1790208000.tar.gz
+# ./cpu-dump-20260924-185512.tar.gz
 ```
 
-Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*`; on Linux, `/proc/cpuinfo` without serial numbers, the kernel release and architecture, specific topology, cache and clock files under `/sys/devices/system/cpu` and `/sys/devices/system/node`, the hybrid core-type lists under `/sys/devices/cpu_*/cpus`, and the DMI system vendor and product name). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
+Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*` and the power manager's frequency tables from IOKit; on Linux, `/proc/cpuinfo` without serial numbers, the kernel release and architecture, specific topology, cache and clock files under `/sys/devices/system/cpu` and `/sys/devices/system/node`, the hybrid core-type lists under `/sys/devices/cpu_*/cpus`, and the DMI system vendor and product name). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
 
 ### Exit codes
 
@@ -134,17 +136,17 @@ Every value has one of three origins, visible in `--json`:
 | `derived` | Computed from other detected values. | SMT = logical ÷ physical CPUs |
 | `database` | Filled from a built-in table because the OS reports only an ID; `from` names the table and its date. Used for ARM core and vendor names on Linux. | `arm-midr@2026-09` |
 
-If none of these can produce a value, the row is hidden.
+If none of these can produce a value, the row is hidden. In the tables, a value from a built-in table ends with `†` (`*` in plain output), and a footnote names the table; `cpu --explain` lists the origin of every value.
 
 ## Platform support
 
 | Platform | Status |
 |---|---|
-| macOS, Apple Silicon | ✅ Identity, per-core-type clusters, L1/L2 caches, feature flags |
+| macOS, Apple Silicon | ✅ Identity, per-core-type clusters, L1/L2 caches, max clock per core type (from IOKit), feature flags |
 | Linux, x86-64 | ✅ Identity, Intel hybrid P/E cores, caches (including an L3 shared across core types), base/max clocks, NUMA nodes, hypervisor |
 | Linux, ARM64 | ✅ Identity (core names from the ARM MIDR table), big.LITTLE clusters, caches, clocks, NUMA, hypervisor |
-| macOS, Intel | 🚧 Planned |
-| Clock speeds on Apple Silicon | 🚧 Planned |
+| macOS, Intel | ✅ Identity, caches (sharing from `hw.cacheconfig`), base clock, feature flags |
+| Rosetta 2 | ✅ An x86 build on Apple Silicon reports the real chip and says it is translated |
 | Windows, BSD | Not yet planned |
 
 On a platform that isn't supported yet, `cpu` exits with status 1 and a message instead of printing incomplete data.
@@ -177,7 +179,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test layout, how to add a machine
 
 ## Roadmap
 
-1. **Complete + release**: Intel Macs and Rosetta 2, Apple Silicon clock speeds, `--explain` (show where every value came from), Homebrew and crates.io releases.
+1. **Release**: CI on Linux and macOS, static Linux binaries, Homebrew and crates.io releases.
 2. **Later**: Windows, theming, fleet auditing (`--check`).
 
 Out of scope: live monitoring (use `btop`), benchmarking and overclocking.

@@ -14,3 +14,15 @@ All notable changes to this project are documented here. The format follows [Kee
 - ARM core names from a table generated from util-linux's `lscpu-arm.c`.
 - `--dump` on Linux, with a per-file allowlist that never captures kernel addresses or board serial numbers.
 - Hypervisor names for common virtual platforms (KVM/QEMU, Hyper-V, VMware, Amazon EC2, Google Compute Engine, Apple Virtualization).
+- Apple Silicon max clock speed per core type, from the power manager's frequency tables (IOKit).
+- Rosetta 2 detection: an x86 build on Apple Silicon reports the real chip and says it is translated.
+- Intel Mac support: identity, caches with sharing from `hw.cacheconfig`, base clock and feature flags.
+- `--explain`, listing every value with where it came from, then any rejected values.
+- Values from built-in tables are marked `†` with a footnote.
+- Tables too wide for 80 columns are shown as one row per core type.
+
+### Fixed
+
+- `--dump` no longer overwrites an existing file or panics when stdout is closed, and names files by UTC time.
+- Snapshot errors are one line, and a snapshot re-packed from its extracted folder opens.
+- A crash prints a short message asking for `cpu --dump` instead of a raw backtrace.

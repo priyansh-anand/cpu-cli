@@ -9,6 +9,7 @@ A snapshot is either a **directory** (how fixtures are stored in `tests/fixtures
 ```
 meta.toml       required: what was captured, and by which version of cpu
 sysctl.toml     optional: sysctl keys and values (macOS)
+ioreg.toml      optional: IOKit data properties as hex strings keyed service:key (macOS; only pmgr:voltage-states*)
 fs/...          optional: file contents, at their absolute path under fs/ (Linux)
 ```
 
@@ -40,6 +41,8 @@ A flat table of quoted keys. Integers are TOML integers; strings are strings; ke
 
 File contents keyed by absolute path: `fs/proc/cpuinfo` holds `/proc/cpuinfo`. Files are stored as UTF-8 text.
 
+A `.tar.gz` whose files sit inside one top-level folder (for example after re-packing an extracted snapshot) opens too.
+
 ## What gets captured
 
 Capture uses a fixed **allowlist**, defined in `src/source/dump.rs`:
@@ -47,6 +50,7 @@ Capture uses a fixed **allowlist**, defined in `src/source/dump.rs`:
 | Source | Captured |
 |---|---|
 | sysctl (macOS) | every key under `hw.*` and `machdep.cpu.*`, plus `sysctl.proc_translated` and `kern.osrelease` |
+| IOKit (macOS) | the power manager's `voltage-states*` frequency tables (`pmgr`), nothing else from the registry |
 | files (Linux) | `/proc/cpuinfo` (with `Serial` lines removed), `/proc/sys/kernel/{arch,osrelease}`, CPU and node lists, the hybrid core-type lists (`/sys/devices/cpu_{core,atom,lowpower}/cpus`), per-CPU topology, capacity, MIDR and cpufreq files, per-cache `level`, `type`, `size` and sharing files, and the DMI vendor and product name |
 
 Linux files are listed one by one rather than swept by directory, because sysfs also contains kernel addresses (for example `crash_notes`).

@@ -30,8 +30,8 @@ Sources are the only code that touches the operating system. Each is a narrow tr
 |---|---|---|---|
 | `Sysctl` | `sysctl` keys | `macos::LiveSysctl` | macOS collector |
 | `Fs` | files and directory listings | `files::LiveFs` (Linux) | Linux collector |
-| `Cpuid` | CPUID leaves | none yet (planned, for Intel Macs) | x86 decoding |
-| `IoReg` | IOKit registry properties | none yet (planned) | Apple Silicon clocks |
+| `Cpuid` | CPUID leaves | unused in v1 (Linux has sysfs; Intel Macs have `hw.cacheconfig`) | none |
+| `IoReg` | IOKit registry data properties | `ioreg::LiveIoReg` (macOS, through `/usr/sbin/ioreg`) | Apple Silicon clocks |
 
 `Sources` bundles one of each plus the `Os` the data came from. `Sources::live()` builds this machine's sources; sources that don't exist on this OS are `Stub`s that return nothing, so collectors contain no `#[cfg]` logic. `Sources::recorded(path)` builds the same struct from a snapshot, backed by plain `BTreeMap`s.
 
@@ -48,6 +48,15 @@ Every read goes through a small `Reader` that applies **sanity gates**: counts m
 - Each `hw.perflevelN` is one core type, fastest first. Each becomes one `Cluster`, named with the OS's own label (`hw.perflevelN.name`: an M5 calls its fast cores "Super", not "Performance").
 - The top-level `hw.l1icachesize`/`hw.l1dcachesize`/`hw.l2cachesize` keys describe **only the efficiency cores** (6 MiB of L2 on an M5, whose Super cores have 16 MiB). The collector never uses them. Without `hw.perflevel*` keys (macOS 11) the Cache section is hidden rather than guessed.
 - There is no vendor key; "Apple" is derived from a brand string starting with `Apple `.
+
+- **Clocks** come from the power manager's frequency tables in IOKit, read with `ioreg -r -d 1 -l -w0 -p IODeviceTree -n pmgr`: `voltage-states5-sram` is perflevel0, `voltage-states1-sram` is perflevel1 (only on two-perflevel chips). Each entry is a little-endian u32 frequency and a u32 voltage. M1 to M3 store hertz, the M5 stores kilohertz (4.46 GHz does not fit a u32 in hertz), so a maximum below 100 000 000 means kilohertz. Entries are not sorted, so the maximum is taken and checked to be between 100 MHz and 10 GHz. Only the max clock is shown.
+- **Rosetta 2:** an x86 build still sees every real ARM `sysctl` key, plus fake x86 ones (`machdep.cpu.family = 6`, an x86 feature list, `hw.cpufrequency = 2400000000`). The Apple Silicon path runs whenever `hw.optional.arm64 == 1`, never reads those keys, and sets `identity.translated` from `sysctl.proc_translated`.
+
+### Intel Mac specifics
+
+- Identity and features come from `machdep.cpu.*` (`features`, `leaf7_features`, `extfeatures`); microcode is `machdep.cpu.microcode_version`.
+- Caches come from `hw.l1icachesize`, `hw.l1dcachesize`, `hw.l2cachesize` and `hw.l3cachesize`. `hw.cacheconfig` lists the logical CPUs sharing each level (index 1 is L1, 2 is L2, 3 is L3), so CPUID isn't needed.
+- The base clock is `hw.cpufrequency`. `hw.cpufrequency_max` is shown only when it is higher: Intel Macs usually report the nominal clock there, not turbo.
 
 ### Linux specifics
 
@@ -80,6 +89,10 @@ Renderers are pure functions of the model.
 - `json` serialises the model directly (see [json-output.md](json-output.md)).
 
 The box renderer is hand-written (about 100 lines) rather than using `comfy-table` or `tabled`, because section titles sit inside the top border and grid column separators join the frame. Owning every character also keeps the golden tests exact. Colour is applied after padding and outside the padding, so escape codes never affect the layout.
+
+- Values that came from a built-in table get a `†` (`*` in plain output) and one footnote names the tables.
+- A Clocks or Cache grid that would be wider than 80 columns (for example on a chip with many core types) is shown as one row per core type instead; the terminal width is not detected.
+- `--explain` walks the model and lists every fact as path, value and origin, then the diagnostics.
 
 ### Mode selection
 

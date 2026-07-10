@@ -72,7 +72,8 @@ pub fn parse_properties(text: &str) -> Vec<(String, Vec<u8>)> {
 }
 
 pub fn decode_hex(hex: &str) -> Option<Vec<u8>> {
-    if hex.len() % 2 != 0 {
+    // from_str_radix alone would accept a sign, so "+f" would decode.
+    if hex.len() % 2 != 0 || !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
         return None;
     }
     (0..hex.len())
@@ -83,4 +84,21 @@ pub fn decode_hex(hex: &str) -> Option<Vec<u8>> {
 
 pub fn encode_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hex_is_strict() {
+        assert_eq!(decode_hex("0aFf"), Some(vec![0x0a, 0xff]));
+        assert_eq!(decode_hex("abc"), None);
+        assert_eq!(decode_hex("zz"), None);
+        assert_eq!(
+            decode_hex("+f+f"),
+            None,
+            "from_str_radix alone accepts a sign"
+        );
+    }
 }

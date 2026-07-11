@@ -220,6 +220,11 @@ fn snapshot_errors_are_one_line() {
     std::fs::write(dir.path().join("meta.toml"), "snapshot_version = [\n").unwrap();
     let (_, _, err) = run(cpu().arg("--from").arg(dir.path()));
     assert_eq!(err.trim_end().lines().count(), 1, "{err}");
+    assert!(err.contains("line 1"), "where it failed: {err}");
+    std::fs::write(dir.path().join("meta.toml"), "snapshot_version = 1\n").unwrap();
+    let (_, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(err.trim_end().lines().count(), 1, "{err}");
+    assert!(err.contains("missing field"), "why it failed: {err}");
 }
 
 #[test]

@@ -130,6 +130,7 @@ fn hostile_snapshot_values_never_reach_the_terminal() {
         &["--plain"][..],
         &["--color", "always"][..],
         &["--json"][..],
+        &["--explain"][..],
     ] {
         let (code, out, err) = run(cpu().args(flags).arg("--from").arg(dir.path()));
         assert_eq!(code, 0, "{err}");
@@ -139,6 +140,25 @@ fn hostile_snapshot_values_never_reach_the_terminal() {
         );
         assert!(!out.contains("pwned"), "{flags:?}: {out:?}");
     }
+}
+
+#[test]
+fn hostile_snapshot_errors_never_reach_the_terminal() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("meta.toml"),
+        "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"macos\"\narch = \"aarch64\"\ncreated_unix = 0\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("ioreg.toml"),
+        "\"pmgr:\\u001b]0;pwned\\u0007\" = \"zz\"\n",
+    )
+    .unwrap();
+    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_ne!(code, 0);
+    assert!(err.contains("not hex"), "{err:?}");
+    assert!(!err.contains(['\x1b', '\x07']), "{err:?}");
 }
 
 #[test]

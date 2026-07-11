@@ -38,7 +38,7 @@ struct Args {
 
 fn main() -> ExitCode {
     std::panic::set_hook(Box::new(|info| {
-        eprintln!("cpu: internal error: {info}");
+        eprintln!("cpu: internal error: {}", printable(&info.to_string()));
         eprintln!("cpu: this is a bug; please run `cpu --dump` and attach the file to an issue");
     }));
     #[cfg(debug_assertions)]
@@ -49,10 +49,24 @@ fn main() -> ExitCode {
     match run(&args) {
         Ok(()) => ExitCode::SUCCESS,
         Err(message) => {
-            eprintln!("cpu: {message}");
+            eprintln!("cpu: {}", printable(&message));
             ExitCode::FAILURE
         }
     }
+}
+
+/// Error text can quote snapshot contents (a key, an archive entry name), which are untrusted:
+/// control characters would let a snapshot drive the terminal, so they are shown as `?`. Line
+/// breaks become spaces so every message stays on one line.
+fn printable(message: &str) -> String {
+    message
+        .chars()
+        .map(|c| match c {
+            '\n' | '\r' | '\t' => ' ',
+            c if c.is_control() => '?',
+            c => c,
+        })
+        .collect()
 }
 
 fn run(args: &Args) -> Result<(), String> {

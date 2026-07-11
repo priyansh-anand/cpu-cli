@@ -215,13 +215,17 @@ impl Snapshot {
 fn invalid(file: &str, err: impl fmt::Display) -> SnapshotError {
     SnapshotError::Invalid {
         file: file.to_string(),
-        // TOML errors span several lines with a caret diagram; one line reads better in a CLI.
+        // TOML errors span several lines around a caret diagram; keep the location and the
+        // reason, drop the diagram, so the message fits on one CLI line.
         message: err
             .to_string()
             .lines()
-            .next()
-            .unwrap_or_default()
-            .to_string(),
+            .map(str::trim)
+            .filter(|l| {
+                !l.is_empty() && !l.starts_with('|') && !l.contains(" | ") && !l.ends_with(" |")
+            })
+            .collect::<Vec<_>>()
+            .join(": "),
     }
 }
 

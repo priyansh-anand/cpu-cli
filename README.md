@@ -123,8 +123,9 @@ Attach that file to an issue. A snapshot contains **only CPU data**, captured fr
 | Code | Meaning |
 |---|---|
 | `0` | Output printed (some fields may be absent because the OS doesn't report them). |
-| `1` | The CPU could not be identified, the snapshot could not be read, or the OS is not supported yet. |
+| `1` | The CPU could not be identified, the snapshot could not be read, `--dump` could not write its file, or the OS is not supported yet. |
 | `2` | Invalid command-line usage. |
+| `101` | Internal error: a bug in `cpu`. The message asks for a `cpu --dump` to attach to an issue. |
 
 ## Where values come from
 
@@ -142,10 +143,10 @@ If none of these can produce a value, the row is hidden. In the tables, a value 
 
 | Platform | Status |
 |---|---|
-| macOS, Apple Silicon | ✅ Identity, per-core-type clusters, L1/L2 caches, max clock per core type (from IOKit), feature flags |
+| macOS, Apple Silicon | ✅ Identity, per-core-type clusters, L1/L2 caches, max clock per core type (from IOKit; verified on M5 hardware so far), feature flags |
 | Linux, x86-64 | ✅ Identity, Intel hybrid P/E cores, caches (including an L3 shared across core types), base/max clocks, NUMA nodes, hypervisor |
 | Linux, ARM64 | ✅ Identity (core names from the ARM MIDR table), big.LITTLE clusters, caches, clocks, NUMA, hypervisor |
-| macOS, Intel | ✅ Identity, caches (sharing from `hw.cacheconfig`), base clock, feature flags |
+| macOS, Intel | 🧪 Identity, caches (sharing from `hw.cacheconfig`), base clock, feature flags. Tested only against a hand-written snapshot; a `cpu --dump` from a real Intel Mac is very welcome |
 | Rosetta 2 | ✅ An x86 build on Apple Silicon reports the real chip and says it is translated |
 | Windows, BSD | Not yet planned |
 

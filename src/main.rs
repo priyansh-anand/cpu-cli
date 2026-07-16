@@ -107,15 +107,12 @@ fn write_dump(target: Option<&Path>) -> Result<(), String> {
             utc_stamp(snapshot.meta.created_unix)
         ))
     });
-    if path.exists() {
-        return Err(format!(
-            "{} already exists; choose another file",
-            path.display()
-        ));
-    }
-    snapshot
-        .write_tar_gz(&path)
-        .map_err(|e| format!("could not write {}: {e}", path.display()))?;
+    snapshot.write_tar_gz(&path).map_err(|e| match e.kind() {
+        io::ErrorKind::AlreadyExists => {
+            format!("{} already exists; choose another file", path.display())
+        }
+        _ => format!("could not write {}: {e}", path.display()),
+    })?;
     render::write_output(&mut io::stdout().lock(), &format!("{}\n", path.display()))
         .map_err(|e| format!("could not write output: {e}"))?;
     eprintln!("cpu: saved CPU data only (no hostname, serial numbers or IDs)");

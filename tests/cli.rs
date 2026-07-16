@@ -191,6 +191,19 @@ fn dump_refuses_to_overwrite() {
     assert_eq!(std::fs::read_to_string(&path).unwrap(), "precious");
 }
 
+#[cfg(unix)]
+#[test]
+fn dump_never_writes_through_a_dangling_symlink() {
+    let dir = tempfile::tempdir().unwrap();
+    let link = dir.path().join("dump.tar.gz");
+    let target = dir.path().join("elsewhere");
+    std::os::unix::fs::symlink(&target, &link).unwrap();
+    let (code, _, err) = run(cpu().arg("--dump").arg(&link));
+    assert_eq!(code, 1);
+    assert!(err.contains("already exists"), "{err}");
+    assert!(!target.exists(), "the dump followed the symlink");
+}
+
 #[test]
 fn dump_survives_a_closed_stdout() {
     use std::process::Stdio;

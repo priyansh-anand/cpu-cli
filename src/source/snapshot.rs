@@ -332,6 +332,7 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
     let mut archive = tar::Archive::new(decoder);
     let mut out = BTreeMap::new();
     let mut total = 0;
+    let mut root: Option<String> = None;
     for entry in archive.entries()? {
         let mut entry = entry?;
         if !entry.header().entry_type().is_file() {
@@ -342,17 +343,27 @@ fn read_tar_gz_entries(path: &Path) -> io::Result<BTreeMap<String, String>> {
             .to_string_lossy()
             .trim_start_matches("./")
             .to_string();
-        // A snapshot re-packed from its extracted directory has one top-level folder.
-        let name = if in_layout(&name) {
-            name
+        // A snapshot re-packed from its extracted directory has one top-level folder ("" is the
+        // archive root). Files from a second folder would merge two machines into one CPU.
+        let (folder, name) = if in_layout(&name) {
+            (String::new(), name)
         } else {
             match name.split_once('/') {
-                Some((_, inner)) if in_layout(inner) => inner.to_string(),
-                _ => name,
+                Some((folder, inner)) if in_layout(inner) => {
+                    (folder.to_string(), inner.to_string())
+                }
+                _ => continue,
             }
         };
-        if !in_layout(&name) {
-            continue;
+        match &root {
+            None => root = Some(folder),
+            Some(first) if *first != folder => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "the archive holds more than one snapshot",
+                ));
+            }
+            Some(_) => {}
         }
         let text = read_capped(&mut entry, &name, &mut total)?;
         out.insert(name, text);
@@ -516,6 +527,29 @@ mod tests {
         let junk = vec![b'x'; (MAX_ENTRY_BYTES + 1) as usize];
         write_raw_tar_gz(&path, &[("meta.toml", meta), ("junk.bin", junk)]);
         assert!(Snapshot::open(&path).is_ok());
+    }
+
+    #[test]
+    fn an_archive_of_several_snapshots_is_refused() {
+        let dir = tempfile::tempdir().unwrap();
+        let meta = sample().to_entries()["meta.toml"].clone().into_bytes();
+        let sysctl = sample().to_entries()["sysctl.toml"].clone().into_bytes();
+        for entries in [
+            vec![
+                ("a/meta.toml", meta.clone()),
+                ("b/sysctl.toml", sysctl.clone()),
+            ],
+            vec![
+                ("meta.toml", meta.clone()),
+                ("b/sysctl.toml", sysctl.clone()),
+            ],
+        ] {
+            let path = dir.path().join("two.tar.gz");
+            let _ = fs::remove_file(&path);
+            write_raw_tar_gz(&path, &entries);
+            let err = Snapshot::open(&path).unwrap_err();
+            assert!(err.to_string().contains("more than one snapshot"), "{err}");
+        }
     }
 
     #[test]

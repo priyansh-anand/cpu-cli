@@ -41,7 +41,7 @@ A flat table of quoted keys. Integers are TOML integers; strings are strings; ke
 
 File contents keyed by absolute path: `fs/proc/cpuinfo` holds `/proc/cpuinfo`. Files are stored as UTF-8 text.
 
-A `.tar.gz` whose files sit inside one top-level folder (for example after re-packing an extracted snapshot) opens too.
+A `.tar.gz` whose files sit inside one top-level folder (for example after re-packing an extracted snapshot) opens too. An archive whose snapshot files come from more than one place (two folders, or the root and a folder) holds more than one snapshot and is refused, rather than merged into a CPU that doesn't exist.
 
 ## What gets captured
 

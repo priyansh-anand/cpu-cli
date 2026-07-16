@@ -186,8 +186,13 @@ impl Snapshot {
         entries
     }
 
+    /// Fails with `AlreadyExists` if anything is at `path`, including a dangling symlink: the
+    /// exclusive create is atomic, so a dump never overwrites a file.
     pub fn write_tar_gz(&self, path: &Path) -> io::Result<()> {
-        let file = fs::File::create(path)?;
+        let file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(path)?;
         let encoder = flate2::write::GzEncoder::new(file, flate2::Compression::default());
         let mut archive = tar::Builder::new(encoder);
         for (name, text) in self.to_entries() {

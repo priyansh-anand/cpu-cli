@@ -225,6 +225,7 @@ fn dump_survives_a_closed_stdout() {
     );
 }
 
+#[cfg(debug_assertions)] // the CPU_TEST_PANIC trigger is compiled out of release builds
 #[test]
 fn a_panic_asks_for_a_dump() {
     let (code, _, err) = run(cpu().env("CPU_TEST_PANIC", "1").arg("--plain"));
@@ -232,6 +233,19 @@ fn a_panic_asks_for_a_dump() {
     assert!(
         err.contains("this is a bug") && err.contains("cpu --dump"),
         "{err}"
+    );
+    let template = err
+        .split("template=")
+        .nth(1)
+        .and_then(|rest| rest.split_whitespace().next())
+        .unwrap_or_else(|| panic!("no issue link: {err}"));
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(".github/ISSUE_TEMPLATE")
+        .join(template);
+    assert!(
+        path.is_file(),
+        "the link names a missing template: {}",
+        path.display()
     );
 }
 
@@ -243,6 +257,23 @@ fn an_unidentifiable_snapshot_says_so() {
     assert_eq!(code, 1);
     assert!(
         err.contains("does not identify a CPU") && !err.contains("--dump"),
+        "{err}"
+    );
+}
+
+#[test]
+fn an_unsupported_os_points_to_the_issue_tracker() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(
+        dir.path().join("meta.toml"),
+        "snapshot_version = 1\ncpu_version = \"0.1.0\"\nos = \"freebsd\"\narch = \"x86_64\"\ncreated_unix = 0\n",
+    )
+    .unwrap();
+    let (code, _, err) = run(cpu().arg("--from").arg(dir.path()));
+    assert_eq!(code, 1);
+    assert!(err.contains("freebsd is not supported yet"), "{err}");
+    assert!(
+        err.contains("https://github.com/priyansh-anand/cpu-cli/issues"),
         "{err}"
     );
 }

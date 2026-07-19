@@ -5,6 +5,22 @@ edition = "2024"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
 readme = "README.md"
+repository = "https://github.com/priyansh-anand/cpu-cli"
+homepage = "https://github.com/priyansh-anand/cpu-cli"
+include = [
+    "/src/**",
+    "/data/**",
+    "/schema/**",
+    "/tests/**",
+    "/scripts/**",
+    "/docs/*.md",
+    "/.github/ISSUE_TEMPLATE/*.md",
+    "/build.rs",
+    "/LICENSE",
+    "/README.md",
+    "/CHANGELOG.md",
+    "/CONTRIBUTING.md",
+]
 description = "A modern, pretty CPU viewer: see what silicon you are actually running"
 keywords = ["cpu", "lscpu", "hardware", "cli", "topology"]
 categories = ["command-line-utilities", "hardware-support"]

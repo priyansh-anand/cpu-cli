@@ -5,7 +5,7 @@ use std::process::ExitCode;
 use clap::Parser;
 use cpu_cli::collect::collect;
 use cpu_cli::render::{self, ColorChoice, Terminal};
-use cpu_cli::source::{Os, Sources, dump};
+use cpu_cli::source::{Os, Snapshot, Sources, dump};
 
 /// Show what CPU you're actually running.
 #[derive(Parser)]
@@ -36,10 +36,18 @@ struct Args {
     color: ColorChoice,
 }
 
+/// The issue form that asks for a `cpu --dump` file; the repository comes from Cargo.toml.
+const REPORT_URL: &str = concat!(
+    env!("CARGO_PKG_REPOSITORY"),
+    "/issues/new?template=machine-snapshot.md"
+);
+
 fn main() -> ExitCode {
     std::panic::set_hook(Box::new(|info| {
         eprintln!("cpu: internal error: {}", printable(&info.to_string()));
-        eprintln!("cpu: this is a bug; please run `cpu --dump` and attach the file to an issue");
+        eprintln!(
+            "cpu: this is a bug; please run `cpu --dump` and attach the file to an issue: {REPORT_URL}"
+        );
     }));
     #[cfg(debug_assertions)]
     if std::env::var_os("CPU_TEST_PANIC").is_some() {
@@ -73,18 +81,27 @@ fn run(args: &Args) -> Result<(), String> {
     if let Some(target) = &args.dump {
         return write_dump(target.as_deref());
     }
-    let sources = match &args.from {
-        Some(path) => Sources::recorded(path).map_err(|e| e.to_string())?,
-        None => Sources::live(),
+    let (sources, os_name) = match &args.from {
+        Some(path) => {
+            let snapshot = Snapshot::open(path).map_err(|e| e.to_string())?;
+            let os = snapshot.meta.os.clone();
+            (snapshot.into_sources(), os)
+        }
+        None => (Sources::live(), std::env::consts::OS.to_string()),
     };
     if sources.os == Os::Other {
-        return Err("this operating system is not supported yet".to_string());
+        return Err(format!(
+            "{os_name} is not supported yet; see {}/issues",
+            env!("CARGO_PKG_REPOSITORY")
+        ));
     }
     let cpu = collect(&sources);
     if !cpu.is_identified() {
         return Err(match &args.from {
             Some(path) => format!("{} does not identify a CPU", path.display()),
-            None => "could not identify this CPU; please run `cpu --dump` and attach the file to a GitHub issue".to_string(),
+            None => format!(
+                "could not identify this CPU; please run `cpu --dump` and attach the file to an issue: {REPORT_URL}"
+            ),
         });
     }
     let (mode, color) = render::choose(

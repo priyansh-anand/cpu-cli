@@ -50,3 +50,8 @@ toml = "1.1"
 insta = "1.48"
 jsonschema = { version = "0.57", default-features = false }
 tempfile = "3.27"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"

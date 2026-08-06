@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+          components: rustfmt
+      - run: cargo fmt --check
+
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux x86-64, Linux ARM64, macOS on Apple Silicon, macOS on Intel (spec 10.5).
+        os: [ubuntu-24.04, ubuntu-24.04-arm, macos-26, macos-26-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked
+      - run: cargo build --locked --release
+      - name: Smoke test on this runner
+        run: scripts/smoke.sh target/release/cpu "$RUNNER_TEMP/smoke"
+        env:
+          SMOKE_REQUIRE_NAME: "1" # every hosted runner's CPU has a known name
+      # Each runner is a real machine shape (including an Intel Mac): keep its snapshot so it can
+      # become a fixture.
+      - name: Keep this runner's snapshot
+        uses: actions/upload-artifact@v7
+        with:
+          name: snapshot-${{ matrix.os }}
+          path: ${{ runner.temp }}/smoke/cpu-dump.tar.gz
+          if-no-files-found: error
+
+  msrv:
+    name: MSRV 1.85 (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-26]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: "1.85"
+      - run: cargo check --locked --all-targets
+
+  deny:
+    name: Dependency policy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check
+
+  package:
+    name: Package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de # master
+        with:
+          toolchain: stable
+      - run: scripts/check-package.sh
+      - run: cargo publish --dry-run --locked

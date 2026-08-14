@@ -1,6 +1,7 @@
 # cpu
 
 [![CI](https://github.com/priyansh-anand/cpu-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/priyansh-anand/cpu-cli/actions/workflows/ci.yml)
+[![crates.io](https://img.shields.io/crates/v/cpu-cli.svg)](https://crates.io/crates/cpu-cli)
 
 **See what silicon you're actually running.** A fast, readable CPU inspector for the terminal, in the spirit of `duf`, `bat` and `eza`, for the one classic tool that never got a modern rewrite: `lscpu`.
 
@@ -59,7 +60,7 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/priyansh-anand/cpu-cli/
 
 Or download an archive from [Releases](https://github.com/priyansh-anand/cpu-cli/releases); each has a `.sha256` checksum.
 
-**crates.io** (Rust 1.85 or newer):
+**[crates.io](https://crates.io/crates/cpu-cli)** (Rust 1.85 or newer):
 
 ```sh
 cargo install cpu-cli

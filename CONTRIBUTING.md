@@ -47,10 +47,13 @@ src/
     mod.rs           mode and colour selection
 data/features.toml   feature flag display names, groups and families
 data/arm-midr.toml   GENERATED ARM core names
-scripts/             generators for data/arm-midr.toml and the synthetic Linux fixtures
+scripts/             data and fixture generators; smoke.sh (live smoke test), check-package.sh
 schema/cpu.v1.json   JSON output contract
 tests/               integration tests and fixtures (below)
-docs/                architecture, JSON contract, snapshot format
+docs/                architecture, JSON contract, snapshot format, releasing
+.github/             CI and release workflows, issue template
+deny.toml            dependency licence and advisory policy
+dist-workspace.toml  release config; generates .github/workflows/release.yml
 ```
 
 Read [docs/architecture.md](docs/architecture.md) before changing how data flows.
@@ -133,6 +136,24 @@ Entries are shown in file order within their group. Flags without an entry still
 - **No panics on bad input.** Collection and snapshot parsing return `None` or an error on anything unexpected. `expect` is reserved for invariants of our own data (e.g. serialising the model).
 - **Clippy is the style guide**, including inline format args (`format!("{name}")`).
 - Comments explain *why* (a hardware quirk, a platform rule), not what the next line does.
+
+## Continuous integration
+
+Every push and pull request runs `.github/workflows/ci.yml`:
+
+| Job | What it checks |
+|---|---|
+| Format | `cargo fmt --check` |
+| Test | `clippy -D warnings`, `cargo test` and `scripts/smoke.sh` on Linux x86-64, Linux ARM64, macOS on Apple Silicon and macOS on Intel |
+| MSRV 1.85 | `cargo check --all-targets` with Rust 1.85 on Linux and macOS |
+| Dependency policy | `cargo deny check` against `deny.toml` (licences, advisories, sources) |
+| Package | `scripts/check-package.sh` and `cargo publish --dry-run` |
+
+CI sets `SMOKE_REQUIRE_NAME=1`, because every hosted runner's CPU has a known name; without it, `smoke.sh` accepts a CPU identified only by its count, as `cpu` itself does (a Linux guest on Apple Silicon has no name).
+
+To run the same checks locally: `cargo deny check`, `scripts/check-package.sh`, `cargo build --release && scripts/smoke.sh target/release/cpu`, and `rustup toolchain install 1.85 --profile minimal && cargo +1.85 check --locked --all-targets`.
+
+Each test runner uploads its own `cpu --dump` as the `snapshot-<runner>` artifact, a ready-made fixture for a machine shape we may not have.
 
 ## Commits and pull requests
 

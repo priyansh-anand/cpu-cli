@@ -139,7 +139,7 @@ Entries are shown in file order within their group. Flags without an entry still
 
 ## Continuous integration
 
-Every push and pull request runs `.github/workflows/ci.yml`:
+Every push to `main` and every pull request runs `.github/workflows/ci.yml`:
 
 | Job | What it checks |
 |---|---|

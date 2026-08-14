@@ -20,6 +20,12 @@ All notable changes to this project are documented here. The format follows [Kee
 - `--explain`, listing every value with where it came from, then any rejected values.
 - Values from built-in tables are marked `†` with a footnote.
 - Tables too wide for 80 columns are shown as one row per core type.
+- Release builds for macOS (Apple Silicon and Intel) and statically linked Linux (x86-64 and ARM64), a shell installer and a Homebrew tap (`brew install priyansh-anand/tap/cpu-cli`).
+- An issue template for submitting a machine snapshot; crash and unidentified-CPU messages link to it.
+
+### Changed
+
+- An unsupported operating system is named in the error, with a link to the issue tracker.
 
 ### Fixed
 

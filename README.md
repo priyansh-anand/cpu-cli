@@ -1,5 +1,7 @@
 # cpu
 
+[![CI](https://github.com/priyansh-anand/cpu-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/priyansh-anand/cpu-cli/actions/workflows/ci.yml)
+
 **See what silicon you're actually running.** A fast, readable CPU inspector for the terminal, in the spirit of `duf`, `bat` and `eza`, for the one classic tool that never got a modern rewrite: `lscpu`.
 
 ```
@@ -12,6 +14,11 @@
 │ Cores     10 physical · 10 logical · no SMT                      │
 │ Clusters  4 × Super · 6 × Efficiency                             │
 ╰──────────────────────────────────────────────────────────────────╯
+╭ Clocks ─┬──────────┬─────────────────────────────────────────────╮
+│         │ Super    │ Efficiency                                  │
+├─────────┼──────────┼─────────────────────────────────────────────┤
+│ Max     │ 4.46 GHz │ 3.05 GHz                                    │
+╰─────────┴──────────┴─────────────────────────────────────────────╯
 ╭ Cache ─┬──────────────────┬──────────────────────────────────────╮
 │ Level  │ Super            │ Efficiency                           │
 ├────────┼──────────────────┼──────────────────────────────────────┤
@@ -28,7 +35,7 @@
 ╰──────────────────────────────────────────────────────────────────╯
 ```
 
-> **Status: early development.** Supported today: macOS (Apple Silicon, including x86 builds under Rosetta 2, and Intel) and Linux (x86-64 and ARM64); see [Platform support](#platform-support).
+> **Status: early development.** Supported today: macOS (Apple Silicon, including x86 builds under Rosetta 2, and Intel) and Linux (x86-64 and ARM64); see [Platform support](#platform-support). The first release, v0.1.0, is not tagged yet: until it is, install from source.
 
 ## Why
 
@@ -38,15 +45,35 @@
 
 ## Install
 
-`cpu` is not yet published to crates.io or Homebrew. Build it from source with Rust 1.85 or newer:
+**Homebrew** (macOS and Linux):
 
 ```sh
-git clone <this repository> cpu
-cd cpu
-cargo install --path .
+brew install priyansh-anand/tap/cpu-cli
 ```
 
-This installs a single `cpu` binary into `~/.cargo/bin`. (The crates.io package will be named `cpu-cli`, because `cpu` is taken; the binary is still `cpu`.)
+**Prebuilt binary** (macOS on Apple Silicon or Intel; Linux on x86-64 or ARM64, statically linked, so it runs on any distribution):
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/priyansh-anand/cpu-cli/releases/latest/download/cpu-cli-installer.sh | sh
+```
+
+Or download an archive from [Releases](https://github.com/priyansh-anand/cpu-cli/releases); each has a `.sha256` checksum.
+
+**crates.io** (Rust 1.85 or newer):
+
+```sh
+cargo install cpu-cli
+```
+
+**From source:**
+
+```sh
+git clone https://github.com/priyansh-anand/cpu-cli
+cd cpu-cli
+cargo install --locked --path .
+```
+
+Every method installs one binary, `cpu`. The package is named `cpu-cli` because `cpu` is taken on crates.io.
 
 ## Usage
 
@@ -116,7 +143,7 @@ cpu --dump
 # ./cpu-dump-20260924-185512.tar.gz
 ```
 
-Attach that file to an issue. A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*` and the power manager's frequency tables from IOKit; on Linux, `/proc/cpuinfo` without serial numbers, the kernel release and architecture, specific topology, cache and clock files under `/sys/devices/system/cpu` and `/sys/devices/system/node`, the hybrid core-type lists under `/sys/devices/cpu_*/cpus`, and the DMI system vendor and product name). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
+Attach that file to a [machine snapshot issue](https://github.com/priyansh-anand/cpu-cli/issues/new?template=machine-snapshot.md). A snapshot contains **only CPU data**, captured from a fixed allowlist (on macOS, `sysctl` keys under `hw.*` and `machdep.cpu.*` and the power manager's frequency tables from IOKit; on Linux, `/proc/cpuinfo` without serial numbers, the kernel release and architecture, specific topology, cache and clock files under `/sys/devices/system/cpu` and `/sys/devices/system/node`, the hybrid core-type lists under `/sys/devices/cpu_*/cpus`, and the DMI system vendor and product name). It never includes your hostname, serial numbers or hardware UUIDs. Anyone can replay it exactly with `cpu --from`, and it becomes a permanent regression test. The format is documented in [docs/snapshot-format.md](docs/snapshot-format.md).
 
 ### Exit codes
 
@@ -174,13 +201,15 @@ cargo build
 cargo test                                  # unit, CLI, schema, golden and invariant tests
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
+cargo deny check                            # licence and advisory policy (deny.toml)
+scripts/smoke.sh target/release/cpu         # live smoke test of a release build
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the test layout, how to add a machine fixture, and how to review output snapshots.
 
 ## Roadmap
 
-1. **Release**: CI on Linux and macOS, static Linux binaries, Homebrew and crates.io releases.
+1. **First release**: v0.1.0 on GitHub Releases, Homebrew and crates.io.
 2. **Later**: Windows, theming, fleet auditing (`--check`).
 
 Out of scope: live monitoring (use `btop`), benchmarking and overclocking.

@@ -202,7 +202,8 @@ cargo test                                  # unit, CLI, schema, golden and inva
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo deny check                            # licence and advisory policy (deny.toml)
-scripts/smoke.sh target/release/cpu         # live smoke test of a release build
+cargo build --release                       # then a live smoke test of that build:
+scripts/smoke.sh target/release/cpu
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the test layout, how to add a machine fixture, and how to review output snapshots.

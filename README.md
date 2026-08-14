@@ -35,7 +35,7 @@
 ╰──────────────────────────────────────────────────────────────────╯
 ```
 
-> **Status: early development.** Supported today: macOS (Apple Silicon, including x86 builds under Rosetta 2, and Intel) and Linux (x86-64 and ARM64); see [Platform support](#platform-support). The first release, v0.1.0, is not tagged yet: until it is, install from source.
+> **Status: early development.** Supported today: macOS (Apple Silicon, including x86 builds under Rosetta 2, and Intel) and Linux (x86-64 and ARM64); see [Platform support](#platform-support).
 
 ## Why
 
@@ -210,7 +210,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test layout, how to add a machine
 
 ## Roadmap
 
-1. **First release**: v0.1.0 on GitHub Releases, Homebrew and crates.io.
+1. **Next**: more real-hardware fixtures, especially Apple Silicon Pro/Max chips and Intel Macs; please send a `cpu --dump`.
 2. **Later**: Windows, theming, fleet auditing (`--check`).
 
 Out of scope: live monitoring (use `btop`), benchmarking and overclocking.

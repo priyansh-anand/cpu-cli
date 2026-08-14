@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-14
+
 ### Added
 
 - macOS on Apple Silicon: CPU identity, per-core-type clusters (using the OS's own names, e.g. "Super"), L1/L2 caches with sharing and instance counts, and grouped feature flags.
@@ -32,3 +34,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `--dump` no longer overwrites an existing file or panics when stdout is closed, and names files by UTC time.
 - Snapshot errors are one line, and a snapshot re-packed from its extracted folder opens.
 - A crash prints a short message asking for `cpu --dump` instead of a raw backtrace.
+
+[Unreleased]: https://github.com/priyansh-anand/cpu-cli/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/priyansh-anand/cpu-cli/releases/tag/v0.1.0

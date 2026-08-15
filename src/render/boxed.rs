@@ -4,7 +4,9 @@
 
 use anstyle::{AnsiColor, Color, Style};
 
-use super::view::{Body, Grid, Pair, Section, grid_inner, grid_widths, pad, span_width, width};
+use super::view::{
+    Body, Grid, Line, Pair, Section, grid_inner, grid_widths, pad, span_width, width,
+};
 
 const TITLE: Style = Style::new().bold();
 const LABEL: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
@@ -106,7 +108,7 @@ fn draw_grid(out: &mut String, title: &str, grid: &Grid, inner: usize, paint: Pa
     out.push_str(&format!("├{}┤\n", border("┼")));
     for row in &grid.rows {
         if row.span {
-            let text = row.cells.first().map_or("", String::as_str);
+            let text = row.cells.first().map_or("", Line::as_str);
             out.push_str(&format!(
                 "│ {} │ {} │\n",
                 paint.cell(&row.label, w[0], LABEL),
@@ -114,7 +116,7 @@ fn draw_grid(out: &mut String, title: &str, grid: &Grid, inner: usize, paint: Pa
             ));
         } else {
             let cells: Vec<&str> = std::iter::once(row.label.as_str())
-                .chain(row.cells.iter().map(String::as_str))
+                .chain(row.cells.iter().map(Line::as_str))
                 .collect();
             out.push_str(&format!("│{}│\n", line(&cells, false)));
         }

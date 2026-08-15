@@ -7,6 +7,7 @@ use crate::model::Cpu;
 pub mod boxed;
 pub mod explain;
 pub mod json;
+pub mod palette;
 pub mod plain;
 pub mod view;
 

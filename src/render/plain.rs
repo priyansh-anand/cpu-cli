@@ -1,7 +1,7 @@
 //! `--plain`: aligned text with no box-drawing and no colour. ASCII-only when built with
 //! [`ASCII`](super::view::ASCII) glyphs, so it is safe for pipes, logs and any locale.
 
-use super::view::{Body, Section, column_widths, pad, width};
+use super::view::{Body, Line, Section, column_widths, pad, width};
 
 /// `s` with every non-ASCII character replaced by `?`, so plain output is ASCII whatever the OS reported.
 fn ascii(s: &str) -> String {
@@ -55,7 +55,7 @@ pub fn render(sections: &[Section]) -> String {
                 let mut data = table[1..].iter();
                 for row in &grid.rows {
                     if row.span {
-                        let text = ascii(row.cells.first().map_or("", String::as_str));
+                        let text = ascii(row.cells.first().map_or("", Line::as_str));
                         out.push(
                             format!("  {}  {text}", pad(&ascii(&row.label), widths[0]))
                                 .trim_end()

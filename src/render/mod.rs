@@ -92,11 +92,11 @@ pub fn render(cpu: &Cpu, mode: Mode, color: bool) -> String {
         Mode::Explain => explain::render(cpu),
         Mode::Plain => with_footnote(
             plain::render(&view::build(cpu, &view::ASCII)),
-            view::footnote(cpu, &view::ASCII),
+            view::footnote(cpu, &view::ASCII).map(|n| n.to_string()),
         ),
         Mode::Boxed => with_footnote(
             boxed::render(&view::build(cpu, &view::UNICODE), color),
-            view::footnote(cpu, &view::UNICODE),
+            view::footnote(cpu, &view::UNICODE).map(|n| n.to_string()),
         ),
     }
 }

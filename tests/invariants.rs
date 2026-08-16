@@ -5,6 +5,7 @@ mod common;
 
 use std::collections::BTreeSet;
 
+use cpu_cli::render::palette::Theme;
 use cpu_cli::render::view::{self, Body};
 use cpu_cli::render::{Mode, render};
 use unicode_width::UnicodeWidthStr;
@@ -96,7 +97,7 @@ fn rendered_output_never_shows_unknowns() {
     for (name, path) in common::fixtures() {
         let cpu = common::load(&path);
         for mode in [Mode::Boxed, Mode::Plain] {
-            let text = render(&cpu, mode, false);
+            let text = render(&cpu, mode, None);
             for bad in ["None", "Some(", " 0 B", " 0 Hz"] {
                 assert!(
                     !text.contains(bad),
@@ -126,7 +127,7 @@ fn rendered_output_never_shows_unknowns() {
 #[test]
 fn boxed_lines_have_equal_width() {
     for (name, path) in common::fixtures() {
-        let text = render(&common::load(&path), Mode::Boxed, false);
+        let text = render(&common::load(&path), Mode::Boxed, None);
         let widths: BTreeSet<usize> = text
             .lines()
             .filter(|l| l.starts_with(['╭', '│', '├', '╰']))
@@ -147,7 +148,25 @@ fn boxed_lines_have_equal_width() {
 #[test]
 fn plain_output_is_ascii_without_escapes() {
     for (name, path) in common::fixtures() {
-        let text = render(&common::load(&path), Mode::Plain, false);
+        let text = render(&common::load(&path), Mode::Plain, None);
         assert!(text.is_ascii() && !text.contains('\x1b'), "{name}:\n{text}");
+    }
+}
+
+#[test]
+fn colour_only_adds_escape_codes() {
+    for (name, path) in common::fixtures() {
+        let cpu = common::load(&path);
+        let uncoloured = render(&cpu, Mode::Boxed, None);
+        for theme in [Theme::Dark256, Theme::Light256, Theme::Ansi16] {
+            let coloured = render(&cpu, Mode::Boxed, Some(theme));
+            assert!(coloured.contains('\x1b'), "{name} {theme:?} has no colour");
+            let stripped = common::strip_ansi(&coloured);
+            assert_eq!(stripped, uncoloured, "{name} {theme:?}");
+            assert!(
+                stripped.lines().all(|l| UnicodeWidthStr::width(l) <= 80),
+                "{name} {theme:?}"
+            );
+        }
     }
 }

@@ -1,0 +1,34 @@
+---
+source: tests/snapshots.rs
+expression: text
+---
+\e[90m╭\e[0m \e[1mIdentity\e[0m \e[90m────────────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mName\e[0m          \e[1m\e[34m12th Gen Intel(R) Core(TM) i7-12700K\e[0m                       \e[90m│\e[0m
+\e[90m│\e[0m \e[36mVendor\e[0m        Intel                                                      \e[90m│\e[0m
+\e[90m│\e[0m \e[36mArchitecture\e[0m  x86_64                                                     \e[90m│\e[0m
+\e[90m│\e[0m \e[36mMicrocode\e[0m     0x2f                                                       \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mTopology\e[0m \e[90m────────────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mCores\e[0m     \e[1m12\e[0m physical \e[90m·\e[0m \e[1m20\e[0m logical                                       \e[90m│\e[0m
+\e[90m│\e[0m \e[36mClusters\e[0m  \e[1m8\e[0m \e[90m×\e[0m \e[1m\e[33mPerformance\e[0m \e[90m·\e[0m \e[1m4\e[0m \e[90m×\e[0m \e[1m\e[32mEfficiency\e[0m                               \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mClocks\e[0m \e[90m─┬─────────────┬──────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m         \e[90m│\e[0m \e[1m\e[33mPerformance\e[0m \e[90m│\e[0m \e[1m\e[32mEfficiency\e[0m                                       \e[90m│\e[0m
+\e[90m├─────────┼─────────────┼──────────────────────────────────────────────────┤\e[0m
+\e[90m│\e[0m \e[36mBase\e[0m    \e[90m│\e[0m \e[1m3.60\e[0m \e[90mGHz\e[0m    \e[90m│\e[0m \e[1m2.70\e[0m \e[90mGHz\e[0m                                         \e[90m│\e[0m
+\e[90m│\e[0m \e[36mMax\e[0m     \e[90m│\e[0m \e[1m5.00\e[0m \e[90mGHz\e[0m    \e[90m│\e[0m \e[1m3.80\e[0m \e[90mGHz\e[0m                                         \e[90m│\e[0m
+\e[90m╰─────────┴─────────────┴──────────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mCache\e[0m \e[90m─┬─────────────────┬───────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mLevel\e[0m  \e[90m│\e[0m \e[1m\e[33mPerformance\e[0m     \e[90m│\e[0m \e[1m\e[32mEfficiency\e[0m                                    \e[90m│\e[0m
+\e[90m├────────┼─────────────────┼───────────────────────────────────────────────┤\e[0m
+\e[90m│\e[0m \e[1m\e[36mL1i\e[0m    \e[90m│\e[0m \e[1m32\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core   \e[90m│\e[0m \e[1m64\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core                                 \e[90m│\e[0m
+\e[90m│\e[0m \e[1m\e[36mL1d\e[0m    \e[90m│\e[0m \e[1m48\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core   \e[90m│\e[0m \e[1m32\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core                                 \e[90m│\e[0m
+\e[90m│\e[0m \e[1m\e[34mL2\e[0m     \e[90m│\e[0m \e[1m1280\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core \e[90m│\e[0m \e[1m2\e[0m \e[90mMiB\e[0m \e[90m/\e[0m \e[1m4\e[0m cores                               \e[90m│\e[0m
+\e[90m│\e[0m \e[1m\e[35mL3\e[0m     \e[90m│\e[0m \e[1m25\e[0m \e[90mMiB\e[0m shared by all \e[1m12\e[0m cores                                   \e[90m│\e[0m
+\e[90m╰────────┴─────────────────┴───────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mFeatures\e[0m \e[90m────────────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mSIMD\e[0m            \e[34mSSE4.2\e[0m \e[90m·\e[0m \e[34mAVX\e[0m \e[90m·\e[0m \e[34mAVX2\e[0m \e[90m·\e[0m \e[34mFMA\e[0m \e[90m·\e[0m \e[34mAVX-VNNI\e[0m                     \e[90m│\e[0m
+\e[90m│\e[0m \e[36mCrypto\e[0m          \e[33mAES\e[0m \e[90m·\e[0m \e[33mPCLMUL\e[0m \e[90m·\e[0m \e[33mVAES\e[0m \e[90m·\e[0m \e[33mVPCLMUL\e[0m \e[90m·\e[0m \e[33mSHA-NI\e[0m \e[90m·\e[0m \e[33mRDRAND\e[0m \e[90m·\e[0m \e[33mRDSEED\e[0m \e[90m│\e[0m
+\e[90m│\e[0m \e[36mVirtualization\e[0m  \e[35mVT-x\e[0m                                                     \e[90m│\e[0m
+\e[90m│\e[0m \e[36mSecurity\e[0m        \e[31mIBT\e[0m \e[90m·\e[0m \e[31mCET-SS\e[0m \e[90m·\e[0m \e[31mSMEP\e[0m \e[90m·\e[0m \e[31mSMAP\e[0m                               \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────────────╯\e[0m

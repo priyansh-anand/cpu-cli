@@ -1176,7 +1176,7 @@ mod tests {
             [("Prime", Role::Kind(crate::model::CoreKind::Uniform))]
         );
         assert_eq!(pairs[0].lines[0].pieces()[0], ("L2", Role::Level(2)));
-        let text = super::super::boxed::render(&s, false);
+        let text = super::super::boxed::render(&s, None);
         assert!(text.lines().all(|l| width(l) <= 80), "{text}");
     }
 

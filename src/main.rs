@@ -111,8 +111,11 @@ fn run(args: &Args) -> Result<(), String> {
         args.color,
         &Terminal::detect(),
     );
-    render::write_output(&mut io::stdout().lock(), &render::render(&cpu, mode, color))
-        .map_err(|e| format!("could not write output: {e}"))
+    render::write_output(
+        &mut io::stdout().lock(),
+        &render::render(&cpu, mode, color.then_some(render::palette::Theme::Dark256)),
+    )
+    .map_err(|e| format!("could not write output: {e}"))
 }
 
 fn write_dump(target: Option<&Path>) -> Result<(), String> {

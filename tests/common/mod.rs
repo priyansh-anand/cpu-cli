@@ -36,3 +36,21 @@ pub fn load(path: &Path) -> Cpu {
 pub fn load_named(name: &str) -> Cpu {
     load(&fixture_dir().join(name))
 }
+
+/// `s` without ANSI SGR escape sequences (`ESC [ ... m`).
+pub fn strip_ansi(s: &str) -> String {
+    let mut out = String::new();
+    let mut chars = s.chars();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            for c in chars.by_ref() {
+                if c == 'm' {
+                    break;
+                }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}

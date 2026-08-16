@@ -1,0 +1,32 @@
+---
+source: tests/snapshots.rs
+expression: text
+---
+\e[90m╭\e[0m \e[1mIdentity\e[0m \e[90m────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mName\e[0m          \e[1mApple M5\e[0m                                           \e[90m│\e[0m
+\e[90m│\e[0m \e[36mVendor\e[0m        Apple                                              \e[90m│\e[0m
+\e[90m│\e[0m \e[36mArchitecture\e[0m  arm64                                              \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mTopology\e[0m \e[90m────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mCores\e[0m     \e[1m10\e[0m physical \e[90m·\e[0m \e[1m10\e[0m logical \e[90m·\e[0m no SMT                      \e[90m│\e[0m
+\e[90m│\e[0m \e[36mClusters\e[0m  \e[1m4\e[0m \e[90m×\e[0m \e[1m\e[33mSuper\e[0m \e[90m·\e[0m \e[1m6\e[0m \e[90m×\e[0m \e[1m\e[32mEfficiency\e[0m                             \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mClocks\e[0m \e[90m─┬──────────┬─────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m         \e[90m│\e[0m \e[1m\e[33mSuper\e[0m    \e[90m│\e[0m \e[1m\e[32mEfficiency\e[0m                                  \e[90m│\e[0m
+\e[90m├─────────┼──────────┼─────────────────────────────────────────────┤\e[0m
+\e[90m│\e[0m \e[36mMax\e[0m     \e[90m│\e[0m \e[1m4.46\e[0m \e[90mGHz\e[0m \e[90m│\e[0m \e[1m3.05\e[0m \e[90mGHz\e[0m                                    \e[90m│\e[0m
+\e[90m╰─────────┴──────────┴─────────────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mCache\e[0m \e[90m─┬──────────────────┬──────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mLevel\e[0m  \e[90m│\e[0m \e[1m\e[33mSuper\e[0m            \e[90m│\e[0m \e[1m\e[32mEfficiency\e[0m                           \e[90m│\e[0m
+\e[90m├────────┼──────────────────┼──────────────────────────────────────┤\e[0m
+\e[90m│\e[0m \e[1m\e[36mL1i\e[0m    \e[90m│\e[0m \e[1m192\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core   \e[90m│\e[0m \e[1m128\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core                       \e[90m│\e[0m
+\e[90m│\e[0m \e[1m\e[36mL1d\e[0m    \e[90m│\e[0m \e[1m128\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core   \e[90m│\e[0m \e[1m64\e[0m \e[90mKiB\e[0m \e[90m/\e[0m core                        \e[90m│\e[0m
+\e[90m│\e[0m \e[1m\e[34mL2\e[0m     \e[90m│\e[0m \e[1m16\e[0m \e[90mMiB\e[0m \e[90m/\e[0m \e[1m4\e[0m cores \e[90m│\e[0m \e[1m6\e[0m \e[90mMiB\e[0m \e[90m/\e[0m \e[1m6\e[0m cores                      \e[90m│\e[0m
+\e[90m╰────────┴──────────────────┴──────────────────────────────────────╯\e[0m
+\e[90m╭\e[0m \e[1mFeatures\e[0m \e[90m────────────────────────────────────────────────────────╮\e[0m
+\e[90m│\e[0m \e[36mSIMD\e[0m      \e[34mNEON\e[0m \e[90m·\e[0m \e[34mFP16\e[0m \e[90m·\e[0m \e[34mBF16\e[0m \e[90m·\e[0m \e[34mI8MM\e[0m \e[90m·\e[0m \e[34mDotProd\e[0m \e[90m·\e[0m \e[34mFHM\e[0m \e[90m·\e[0m \e[34mSME\e[0m \e[90m·\e[0m \e[34mSME2\e[0m \e[90m│\e[0m
+\e[90m│\e[0m           \e[34mSME2.1\e[0m                                                 \e[90m│\e[0m
+\e[90m│\e[0m \e[36mCrypto\e[0m    \e[33mAES\e[0m \e[90m·\e[0m \e[33mPMULL\e[0m \e[90m·\e[0m \e[33mSHA1\e[0m \e[90m·\e[0m \e[33mSHA256\e[0m \e[90m·\e[0m \e[33mSHA512\e[0m \e[90m·\e[0m \e[33mSHA3\e[0m \e[90m·\e[0m \e[33mCRC32\e[0m    \e[90m│\e[0m
+\e[90m│\e[0m \e[36mSecurity\e[0m  \e[31mPAC\e[0m \e[90m·\e[0m \e[31mBTI\e[0m \e[90m·\e[0m \e[31mMTE\e[0m \e[90m·\e[0m \e[31mDIT\e[0m \e[90m·\e[0m \e[31mSB\e[0m \e[90m·\e[0m \e[31mCSV2\e[0m \e[90m·\e[0m \e[31mCSV3\e[0m               \e[90m│\e[0m
+\e[90m│\e[0m \e[36mOther\e[0m     LSE \e[90m·\e[0m LSE2                                             \e[90m│\e[0m
+\e[90m╰──────────────────────────────────────────────────────────────────╯\e[0m

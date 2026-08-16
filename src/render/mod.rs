@@ -11,6 +11,8 @@ pub mod palette;
 pub mod plain;
 pub mod view;
 
+use palette::Theme;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Boxed,
@@ -87,7 +89,8 @@ pub fn choose(
     }
 }
 
-pub fn render(cpu: &Cpu, mode: Mode, color: bool) -> String {
+pub fn render(cpu: &Cpu, mode: Mode, theme: Option<Theme>) -> String {
+    let palette = theme.map(Theme::palette);
     match mode {
         Mode::Json => json::render(cpu),
         Mode::Explain => explain::render(cpu),
@@ -96,8 +99,8 @@ pub fn render(cpu: &Cpu, mode: Mode, color: bool) -> String {
             view::footnote(cpu, &view::ASCII).map(|n| n.to_string()),
         ),
         Mode::Boxed => with_footnote(
-            boxed::render(&view::build(cpu, &view::UNICODE), color),
-            view::footnote(cpu, &view::UNICODE).map(|n| n.to_string()),
+            boxed::render(&view::build(cpu, &view::UNICODE), palette),
+            view::footnote(cpu, &view::UNICODE).map(|n| boxed::paint_line(&n, palette)),
         ),
     }
 }

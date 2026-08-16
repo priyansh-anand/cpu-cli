@@ -2,18 +2,14 @@
 //!
 //! `inner` is the number of columns between a box's two vertical borders.
 
-use anstyle::{AnsiColor, Color, Style};
+use anstyle::Style;
 
-use super::view::{
-    Body, Grid, Line, Pair, Section, grid_inner, grid_widths, pad, span_width, width,
-};
+use super::palette::Palette;
+use super::view::{Body, Grid, Line, Pair, Section, grid_inner, grid_widths, span_width, width};
 
-const TITLE: Style = Style::new().bold();
-const LABEL: Style = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Cyan)));
-
-pub fn render(sections: &[Section], color: bool) -> String {
+pub fn render(sections: &[Section], palette: Option<&Palette>) -> String {
     let inner = sections.iter().map(natural_inner).max().unwrap_or(0);
-    let paint = Paint(color);
+    let paint = Paint(palette);
     let mut out = String::new();
     for section in sections {
         match &section.body {
@@ -24,19 +20,48 @@ pub fn render(sections: &[Section], color: bool) -> String {
     out
 }
 
-#[derive(Clone, Copy)]
-struct Paint(bool);
+/// `line` painted with `palette`, or its plain text when there is no palette.
+pub fn paint_line(line: &Line, palette: Option<&Palette>) -> String {
+    Paint(palette).line(line, 0, Style::new())
+}
 
-impl Paint {
-    /// `text` styled and padded to `w` columns. Padding goes outside the escape codes, so colour
-    /// can never shift the layout.
-    fn cell(self, text: &str, w: usize, style: Style) -> String {
-        let fill = " ".repeat(w.saturating_sub(width(text)));
-        if self.0 && !text.is_empty() && style != Style::new() {
-            format!("{}{text}{}{fill}", style.render(), style.render_reset())
+#[derive(Clone, Copy)]
+struct Paint<'a>(Option<&'a Palette>);
+
+impl Paint<'_> {
+    fn styled(self, text: &str, style: Style) -> String {
+        if self.0.is_some() && !text.is_empty() && style != Style::new() {
+            format!("{}{text}{}", style.render(), style.render_reset())
         } else {
-            format!("{text}{fill}")
+            text.to_string()
         }
+    }
+
+    fn chrome(self, text: &str) -> String {
+        self.styled(text, self.0.map_or(Style::new(), |p| p.chrome))
+    }
+
+    fn title(self, text: &str) -> String {
+        self.styled(text, self.0.map_or(Style::new(), |p| p.title))
+    }
+
+    fn label_style(self) -> Style {
+        self.0.map_or(Style::new(), |p| p.label)
+    }
+
+    /// `line` painted piece by piece and padded to `w` columns; plain pieces get `base`. Padding
+    /// goes outside the escape codes, so colour can never shift the layout.
+    fn line(self, line: &Line, w: usize, base: Style) -> String {
+        let mut out: String = line
+            .pieces()
+            .into_iter()
+            .map(|(text, role)| {
+                let style = self.0.and_then(|p| p.role(role)).unwrap_or(base);
+                self.styled(text, style)
+            })
+            .collect();
+        out.push_str(&" ".repeat(w.saturating_sub(width(line))));
+        out
     }
 }
 
@@ -63,18 +88,28 @@ fn draw_pairs(out: &mut String, title: &str, pairs: &[Pair], inner: usize, paint
     let label_w = label_width(pairs);
     let value_w = inner - label_w - 4;
     let dashes = "─".repeat(inner - width(title) - 2);
-    out.push_str(&format!("╭ {} {dashes}╮\n", paint.cell(title, 0, TITLE)));
+    let bar = paint.chrome("│");
+    out.push_str(&format!(
+        "{} {} {}\n",
+        paint.chrome("╭"),
+        paint.title(title),
+        paint.chrome(&format!("{dashes}╮"))
+    ));
+    let blank = Line::new();
     for pair in pairs {
         for (i, line) in pair.lines.iter().enumerate() {
-            let label = if i == 0 { pair.label.as_str() } else { "" };
+            let label = if i == 0 { &pair.label } else { &blank };
             out.push_str(&format!(
-                "│ {}  {} │\n",
-                paint.cell(label, label_w, LABEL),
-                pad(line, value_w)
+                "{bar} {}  {} {bar}\n",
+                paint.line(label, label_w, paint.label_style()),
+                paint.line(line, value_w, Style::new())
             ));
         }
     }
-    out.push_str(&format!("╰{}╯\n", "─".repeat(inner)));
+    out.push_str(&format!(
+        "{}\n",
+        paint.chrome(&format!("╰{}╯", "─".repeat(inner)))
+    ));
 }
 
 fn draw_grid(out: &mut String, title: &str, grid: &Grid, inner: usize, paint: Paint) {
@@ -83,52 +118,69 @@ fn draw_grid(out: &mut String, title: &str, grid: &Grid, inner: usize, paint: Pa
     w[last] += inner - grid_inner(&w);
     let seg = |i: usize| "─".repeat(w[i] + 2);
     let border = |join: &str| (0..w.len()).map(seg).collect::<Vec<_>>().join(join);
-    let line = |cells: &[&str], header: bool| {
+    let bar = paint.chrome("│");
+    let label = paint.label_style();
+    let row_line = |cells: &[&Line], header: bool| {
         cells
             .iter()
             .enumerate()
             .map(|(i, c)| {
-                let style = if i == 0 || header {
-                    LABEL
+                let base = if i == 0 || header {
+                    label
                 } else {
                     Style::new()
                 };
-                format!(" {} ", paint.cell(c, w[i], style))
+                format!(" {} ", paint.line(c, w[i], base))
             })
             .collect::<Vec<_>>()
-            .join("│")
+            .join(&bar)
     };
     let rest: String = (1..w.len()).map(|i| format!("┬{}", seg(i))).collect();
     let dashes = "─".repeat(w[0] - width(title));
     out.push_str(&format!(
-        "╭ {} {dashes}{rest}╮\n",
-        paint.cell(title, 0, TITLE)
+        "{} {} {}\n",
+        paint.chrome("╭"),
+        paint.title(title),
+        paint.chrome(&format!("{dashes}{rest}╮"))
     ));
-    out.push_str(&format!("│{}│\n", line(&grid.header(), true)));
-    out.push_str(&format!("├{}┤\n", border("┼")));
+    let corner = Line::plain(grid.corner);
+    let header: Vec<&Line> = std::iter::once(&corner)
+        .chain(grid.columns.iter())
+        .collect();
+    out.push_str(&format!("{bar}{}{bar}\n", row_line(&header, true)));
+    out.push_str(&format!(
+        "{}\n",
+        paint.chrome(&format!("├{}┤", border("┼")))
+    ));
+    let blank = Line::new();
     for row in &grid.rows {
         if row.span {
-            let text = row.cells.first().map_or("", Line::as_str);
+            let text = row.cells.first().unwrap_or(&blank);
             out.push_str(&format!(
-                "│ {} │ {} │\n",
-                paint.cell(&row.label, w[0], LABEL),
-                pad(text, span_width(&w))
+                "{bar} {} {bar} {} {bar}\n",
+                paint.line(&row.label, w[0], label),
+                paint.line(text, span_width(&w), Style::new())
             ));
         } else {
-            let cells: Vec<&str> = std::iter::once(row.label.as_str())
-                .chain(row.cells.iter().map(Line::as_str))
+            let cells: Vec<&Line> = std::iter::once(&row.label)
+                .chain(row.cells.iter())
                 .collect();
-            out.push_str(&format!("│{}│\n", line(&cells, false)));
+            out.push_str(&format!("{bar}{}{bar}\n", row_line(&cells, false)));
         }
     }
-    out.push_str(&format!("╰{}╯\n", border("┴")));
+    out.push_str(&format!(
+        "{}\n",
+        paint.chrome(&format!("╰{}╯", border("┴")))
+    ));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::render::palette::DARK_256;
     use crate::render::view::{UNICODE, build};
     use crate::test_support::fixture;
+    use anstyle::Style;
 
     const APPLE_M5: &str = "\
 ╭ Identity ────────────────────────────────────────────────────────╮
@@ -181,7 +233,7 @@ mod tests {
     #[test]
     fn apple_m5_boxed_output() {
         assert_eq!(
-            render(&build(&fixture("apple-m5"), &UNICODE), false),
+            render(&build(&fixture("apple-m5"), &UNICODE), None),
             APPLE_M5
         );
     }
@@ -196,7 +248,7 @@ mod tests {
             "linux-x86-amd-gce",
             "linux-arm64-apple-vm",
         ] {
-            let text = render(&build(&fixture(name), &UNICODE), false);
+            let text = render(&build(&fixture(name), &UNICODE), None);
             let widths: std::collections::BTreeSet<usize> = text
                 .lines()
                 .filter(|l| l.starts_with(['╭', '│', '├', '╰']))
@@ -208,9 +260,38 @@ mod tests {
 
     #[test]
     fn colour_never_changes_the_layout() {
+        use crate::render::palette::{ANSI_16, LIGHT_256};
         let sections = build(&fixture("apple-m5"), &UNICODE);
-        let coloured = render(&sections, true);
-        assert!(coloured.contains("\x1b[1m"), "titles are bold");
-        assert_eq!(strip_ansi(&coloured), render(&sections, false));
+        for palette in [&DARK_256, &LIGHT_256, &ANSI_16] {
+            let coloured = render(&sections, Some(palette));
+            assert!(coloured.contains("\x1b[1m"), "titles are bold");
+            assert_eq!(strip_ansi(&coloured), render(&sections, None));
+        }
+    }
+
+    #[test]
+    fn roles_are_painted_with_the_palette() {
+        let text = render(
+            &build(&fixture("linux-x86-intel-hybrid"), &UNICODE),
+            Some(&DARK_256),
+        );
+        let painted = |style: Style, piece: &str| {
+            format!("{}{piece}{}", style.render(), style.render_reset())
+        };
+        for (style, piece) in [
+            (DARK_256.performance, "Performance"),
+            (DARK_256.efficiency, "Efficiency"),
+            (DARK_256.levels[2], "L3"),
+            (DARK_256.simd, "AVX2"),
+            (DARK_256.unit, "GHz"),
+            (DARK_256.intel, "12th Gen Intel(R) Core(TM) i7-12700K"),
+            (DARK_256.title, "Cache"),
+            (DARK_256.chrome, "│"),
+        ] {
+            assert!(
+                text.contains(&painted(style, piece)),
+                "{piece} not painted:\n{text}"
+            );
+        }
     }
 }

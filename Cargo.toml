@@ -36,6 +36,7 @@ flate2 = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 tar = "0.4"
+terminal-colorsaurus = "1"
 toml = "1.1"
 unicode-width = "0.2"
 

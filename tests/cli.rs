@@ -4,6 +4,8 @@ use std::process::{Command, Output};
 fn cpu() -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_cpu"));
     cmd.env_remove("CLICOLOR_FORCE")
+        .env_remove("TERM")
+        .env_remove("COLORTERM")
         .env_remove("NO_COLOR")
         .env_remove("LC_ALL")
         .env_remove("LC_CTYPE")
@@ -308,4 +310,52 @@ fn a_wrapped_tarball_opens() {
     let (code, out, err) = run(cpu().arg("--plain").arg("--from").arg(&archive));
     assert_eq!(code, 0, "{err}");
     assert!(out.contains("Apple M5"));
+}
+
+#[test]
+fn colour_depth_follows_term() {
+    let m5 = fixture("apple-m5");
+    let (_, rich, _) = run(cpu()
+        .env("TERM", "xterm-256color")
+        .args(["--color", "always", "--from"])
+        .arg(&m5));
+    assert!(rich.contains("\x1b[38;5;"), "{rich:?}");
+    let (_, basic, _) = run(cpu()
+        .env("TERM", "xterm")
+        .args(["--color", "always", "--from"])
+        .arg(&m5));
+    assert!(
+        basic.contains('\x1b') && !basic.contains("38;5;"),
+        "{basic:?}"
+    );
+}
+
+#[test]
+fn term_dumb_means_no_colour_unless_the_flag_forces_it() {
+    let m5 = fixture("apple-m5");
+    let (_, out, _) = run(cpu()
+        .env("TERM", "dumb")
+        .env("CLICOLOR_FORCE", "1")
+        .arg("--from")
+        .arg(&m5));
+    assert!(!out.contains('\x1b'), "{out:?}");
+    let (_, out, _) = run(cpu()
+        .env("TERM", "dumb")
+        .args(["--color", "always", "--from"])
+        .arg(&m5));
+    assert!(out.contains('\x1b'), "{out:?}");
+}
+
+#[test]
+fn text_modes_never_contain_escapes() {
+    for flags in [&["--plain"][..], &["--json"][..], &["--explain"][..]] {
+        let (code, out, err) = run(cpu()
+            .env("TERM", "xterm-256color")
+            .env("CLICOLOR_FORCE", "1")
+            .args(flags)
+            .args(["--color", "always", "--from"])
+            .arg(fixture("apple-m5")));
+        assert_eq!(code, 0, "{flags:?}: {err}");
+        assert!(!out.contains('\x1b'), "{flags:?}: {out:?}");
+    }
 }

@@ -37,6 +37,10 @@ pub struct Terminal {
     pub no_color: bool,
     /// `CLICOLOR_FORCE` is set, non-empty and not `0`.
     pub force_color: bool,
+    /// How many colours the terminal claims.
+    pub depth: Depth,
+    /// `TERM=dumb`: no colour unless `--color always`.
+    pub dumb: bool,
 }
 
 impl Terminal {
@@ -45,12 +49,53 @@ impl Terminal {
         let locale = var("LC_ALL")
             .or_else(|| var("LC_CTYPE"))
             .or_else(|| var("LANG"));
+        let term = var("TERM");
         Terminal {
             stdout_is_tty: io::stdout().is_terminal(),
             utf8: locale_is_utf8(locale.as_deref()),
             no_color: var("NO_COLOR").is_some(),
             force_color: var("CLICOLOR_FORCE").is_some_and(|v| v != "0"),
+            depth: Depth::from_env(var("COLORTERM").as_deref(), term.as_deref()),
+            dumb: term.as_deref() == Some("dumb"),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Depth {
+    Ansi16,
+    Ansi256,
+}
+
+impl Depth {
+    /// 256 colours when `COLORTERM` says truecolor/24bit or `TERM` names a 256-colour terminal.
+    pub fn from_env(colorterm: Option<&str>, term: Option<&str>) -> Depth {
+        if matches!(colorterm, Some("truecolor" | "24bit"))
+            || term.is_some_and(|t| t.contains("256color"))
+        {
+            Depth::Ansi256
+        } else {
+            Depth::Ansi16
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Background {
+    Dark,
+    Light,
+    Unknown,
+}
+
+/// Asks the terminal whether its background is light (OSC 11). Capped at 100 ms; a terminal that
+/// doesn't support the query is detected before that. Any failure is `Unknown`.
+pub fn query_background() -> Background {
+    let mut options = terminal_colorsaurus::QueryOptions::default();
+    options.timeout = std::time::Duration::from_millis(100);
+    match terminal_colorsaurus::theme_mode(options) {
+        Ok(terminal_colorsaurus::ThemeMode::Light) => Background::Light,
+        Ok(terminal_colorsaurus::ThemeMode::Dark) => Background::Dark,
+        Err(_) => Background::Unknown,
     }
 }
 
@@ -62,31 +107,45 @@ pub fn locale_is_utf8(locale: Option<&str>) -> bool {
     })
 }
 
-/// Picks the output mode and whether to colour it. `--json` wins. Boxes need a UTF-8 locale and
-/// either a terminal or an explicit request for colour; everything else gets plain text.
+/// Picks the output mode and, for coloured boxes, the palette. `--json` wins. Boxes need a UTF-8
+/// locale and either a terminal or an explicit request for colour; everything else gets plain
+/// text. `background` is called only when colour is on, the terminal has 256 colours and stdout is
+/// a terminal that can be asked.
 pub fn choose(
     json: bool,
     plain: bool,
     explain: bool,
     color: ColorChoice,
     term: &Terminal,
-) -> (Mode, bool) {
+    background: impl FnOnce() -> Background,
+) -> (Mode, Option<Theme>) {
     if json {
-        return (Mode::Json, false);
+        return (Mode::Json, None);
     }
     if explain {
-        return (Mode::Explain, false);
+        return (Mode::Explain, None);
     }
     let color_on = match color {
         ColorChoice::Always => true,
         ColorChoice::Never => false,
-        ColorChoice::Auto => !term.no_color && (term.force_color || term.stdout_is_tty),
+        ColorChoice::Auto => {
+            !term.no_color && !term.dumb && (term.force_color || term.stdout_is_tty)
+        }
     };
     if plain || !term.utf8 || !(term.stdout_is_tty || color_on) {
-        (Mode::Plain, false)
-    } else {
-        (Mode::Boxed, color_on)
+        return (Mode::Plain, None);
     }
+    if !color_on {
+        return (Mode::Boxed, None);
+    }
+    let theme = match term.depth {
+        Depth::Ansi16 => Theme::Ansi16,
+        Depth::Ansi256 if term.stdout_is_tty && background() == Background::Light => {
+            Theme::Light256
+        }
+        Depth::Ansi256 => Theme::Dark256,
+    };
+    (Mode::Boxed, Some(theme))
 }
 
 pub fn render(cpu: &Cpu, mode: Mode, theme: Option<Theme>) -> String {
@@ -132,46 +191,90 @@ mod tests {
             utf8,
             no_color: false,
             force_color: false,
+            depth: Depth::Ansi256,
+            dumb: false,
+        }
+    }
+
+    /// For cases where the terminal must not be asked.
+    fn unasked() -> Background {
+        panic!("the terminal background was queried")
+    }
+
+    fn pick(color: ColorChoice, t: &Terminal) -> (Mode, Option<Theme>) {
+        choose(false, false, false, color, t, unasked)
+    }
+
+    #[test]
+    fn a_terminal_gets_the_palette_for_its_background() {
+        let t = term(true, true);
+        for (bg, theme) in [
+            (Background::Dark, Theme::Dark256),
+            (Background::Light, Theme::Light256),
+            (Background::Unknown, Theme::Dark256),
+        ] {
+            assert_eq!(
+                choose(false, false, false, ColorChoice::Auto, &t, || bg),
+                (Mode::Boxed, Some(theme))
+            );
         }
     }
 
     #[test]
-    fn a_terminal_gets_colourful_boxes() {
+    fn sixteen_colour_terminals_are_never_asked() {
+        let t = Terminal {
+            depth: Depth::Ansi16,
+            ..term(true, true)
+        };
         assert_eq!(
-            choose(false, false, false, ColorChoice::Auto, &term(true, true)),
-            (Mode::Boxed, true)
+            pick(ColorChoice::Auto, &t),
+            (Mode::Boxed, Some(Theme::Ansi16))
         );
     }
 
     #[test]
     fn pipes_get_plain() {
         assert_eq!(
-            choose(false, false, false, ColorChoice::Auto, &term(false, true)),
-            (Mode::Plain, false)
+            pick(ColorChoice::Auto, &term(false, true)),
+            (Mode::Plain, None)
         );
     }
 
     #[test]
     fn json_always_wins() {
         assert_eq!(
-            choose(true, true, false, ColorChoice::Always, &term(true, true)),
-            (Mode::Json, false)
+            choose(
+                true,
+                true,
+                false,
+                ColorChoice::Always,
+                &term(true, true),
+                unasked
+            ),
+            (Mode::Json, None)
         );
     }
 
     #[test]
     fn plain_flag_on_a_terminal() {
         assert_eq!(
-            choose(false, true, false, ColorChoice::Auto, &term(true, true)),
-            (Mode::Plain, false)
+            choose(
+                false,
+                true,
+                false,
+                ColorChoice::Auto,
+                &term(true, true),
+                unasked
+            ),
+            (Mode::Plain, None)
         );
     }
 
     #[test]
     fn non_utf8_locale_gets_plain() {
         assert_eq!(
-            choose(false, false, false, ColorChoice::Auto, &term(true, false)),
-            (Mode::Plain, false)
+            pick(ColorChoice::Auto, &term(true, false)),
+            (Mode::Plain, None)
         );
     }
 
@@ -181,37 +284,96 @@ mod tests {
             no_color: true,
             ..term(true, true)
         };
-        assert_eq!(
-            choose(false, false, false, ColorChoice::Auto, &t),
-            (Mode::Boxed, false)
-        );
+        assert_eq!(pick(ColorChoice::Auto, &t), (Mode::Boxed, None));
     }
 
     #[test]
-    fn color_always_boxes_a_pipe() {
+    fn forced_colour_into_a_pipe_is_never_asked() {
         assert_eq!(
-            choose(false, false, false, ColorChoice::Always, &term(false, true)),
-            (Mode::Boxed, true)
+            pick(ColorChoice::Always, &term(false, true)),
+            (Mode::Boxed, Some(Theme::Dark256))
         );
-    }
-
-    #[test]
-    fn clicolor_force_boxes_a_pipe() {
         let t = Terminal {
             force_color: true,
             ..term(false, true)
         };
         assert_eq!(
-            choose(false, false, false, ColorChoice::Auto, &t),
-            (Mode::Boxed, true)
+            pick(ColorChoice::Auto, &t),
+            (Mode::Boxed, Some(Theme::Dark256))
         );
     }
 
     #[test]
     fn color_never_on_a_terminal() {
         assert_eq!(
-            choose(false, false, false, ColorChoice::Never, &term(true, true)),
-            (Mode::Boxed, false)
+            pick(ColorChoice::Never, &term(true, true)),
+            (Mode::Boxed, None)
+        );
+    }
+
+    #[test]
+    fn term_dumb_turns_colour_off_like_no_color() {
+        let dumb = Terminal {
+            dumb: true,
+            ..term(true, true)
+        };
+        assert_eq!(pick(ColorChoice::Auto, &dumb), (Mode::Boxed, None));
+        let forced = Terminal {
+            force_color: true,
+            ..dumb
+        };
+        assert_eq!(pick(ColorChoice::Auto, &forced), (Mode::Boxed, None));
+        assert_eq!(
+            choose(false, false, false, ColorChoice::Always, &dumb, || {
+                Background::Unknown
+            }),
+            (Mode::Boxed, Some(Theme::Dark256))
+        );
+    }
+
+    #[test]
+    fn depth_from_the_environment() {
+        assert_eq!(Depth::from_env(Some("truecolor"), None), Depth::Ansi256);
+        assert_eq!(
+            Depth::from_env(Some("24bit"), Some("xterm")),
+            Depth::Ansi256
+        );
+        assert_eq!(
+            Depth::from_env(None, Some("xterm-256color")),
+            Depth::Ansi256
+        );
+        assert_eq!(
+            Depth::from_env(None, Some("screen-256color")),
+            Depth::Ansi256
+        );
+        assert_eq!(Depth::from_env(None, Some("xterm")), Depth::Ansi16);
+        assert_eq!(Depth::from_env(None, Some("linux")), Depth::Ansi16);
+        assert_eq!(Depth::from_env(None, None), Depth::Ansi16);
+    }
+
+    #[test]
+    fn explain_is_plain_text_and_json_still_wins() {
+        assert_eq!(
+            choose(
+                false,
+                false,
+                true,
+                ColorChoice::Always,
+                &term(true, true),
+                unasked
+            ),
+            (Mode::Explain, None)
+        );
+        assert_eq!(
+            choose(
+                true,
+                false,
+                true,
+                ColorChoice::Auto,
+                &term(true, true),
+                unasked
+            ),
+            (Mode::Json, None)
         );
     }
 
@@ -243,17 +405,5 @@ mod tests {
     #[test]
     fn other_write_errors_are_reported() {
         assert!(write_output(&mut Failing(io::ErrorKind::PermissionDenied), "x").is_err());
-    }
-
-    #[test]
-    fn explain_is_plain_text_and_json_still_wins() {
-        assert_eq!(
-            choose(false, false, true, ColorChoice::Always, &term(true, true)),
-            (Mode::Explain, false)
-        );
-        assert_eq!(
-            choose(true, false, true, ColorChoice::Auto, &term(true, true)),
-            (Mode::Json, false)
-        );
     }
 }

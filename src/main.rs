@@ -104,18 +104,16 @@ fn run(args: &Args) -> Result<(), String> {
             ),
         });
     }
-    let (mode, color) = render::choose(
+    let (mode, theme) = render::choose(
         args.json,
         args.plain,
         args.explain,
         args.color,
         &Terminal::detect(),
+        render::query_background,
     );
-    render::write_output(
-        &mut io::stdout().lock(),
-        &render::render(&cpu, mode, color.then_some(render::palette::Theme::Dark256)),
-    )
-    .map_err(|e| format!("could not write output: {e}"))
+    render::write_output(&mut io::stdout().lock(), &render::render(&cpu, mode, theme))
+        .map_err(|e| format!("could not write output: {e}"))
 }
 
 fn write_dump(target: Option<&Path>) -> Result<(), String> {

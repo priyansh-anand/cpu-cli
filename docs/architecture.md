@@ -85,6 +85,7 @@ pub type F<T> = Option<Fact<T>>;
 Renderers are pure functions of the model.
 
 - `view::build(&Cpu, &Glyphs)` turns the model into display-ready `Section`s: label/value pairs, or a grid with one column per cluster. Rows with unknown values and sections with no rows are dropped here, once.
+- Every value is a `view::Line`: its text plus the `Role` of each styled piece (`Number`, `Unit`, `Separator`, `Kind(CoreKind)`, `Feature(FeatureGroup)`, `Level`, `Vendor`, `Note`, `Marker`). Widths, plain output, JSON and `--explain` use only the text, so colour can never change them. `render/palette.rs` maps roles to styles in three palettes: dark-256, light-256 and ansi-16.
 - `boxed` draws those sections as duf-style boxes of equal width; `plain` prints them as aligned ASCII text. Both consume the same sections, so they can never disagree about *what* is shown, only about framing and glyphs (`·`/`×` vs `,`/`x`).
 - `json` serialises the model directly (see [json-output.md](json-output.md)).
 
@@ -106,10 +107,18 @@ flowchart TD
     plainflag -- yes --> P["plain"]
     plainflag -- no --> where{"stdout is a terminal,<br/>or colour forced?"}
     where -- no --> P
-    where -- yes --> B["boxed"]
+    where -- yes --> colour{"colour on?"}
+    colour -- no --> B["boxed, no colour"]
+    colour -- yes --> depth{"256 colours?<br/>(COLORTERM / TERM)"}
+    depth -- no --> A16["boxed, ansi-16"]
+    depth -- yes --> tty{"stdout is a terminal?"}
+    tty -- no --> D["boxed, dark-256"]
+    tty -- yes --> ask{"background (OSC 11,<br/>100 ms)"}
+    ask -- light --> L["boxed, light-256"]
+    ask -- "dark / unknown" --> D
 ```
 
-Colour is *forced* by `--color always`, or by `CLICOLOR_FORCE` when `NO_COLOR` is unset. Boxed output is coloured unless `NO_COLOR` is set or `--color never` is given.
+Colour is *forced* by `--color always`, or by `CLICOLOR_FORCE` when `NO_COLOR` is unset and `TERM` is not `dumb`. Boxed output is coloured unless `NO_COLOR` is set, `TERM=dumb`, or `--color never` is given. The background is asked with `terminal-colorsaurus` only on the terminal path, so tests and pipes never perform terminal I/O; `choose` takes the query as a function, and the tests pass one that panics.
 
 Plain output is ASCII-only, so it is safe in logs, pipes and any locale. A closed pipe while writing is treated as success.
 

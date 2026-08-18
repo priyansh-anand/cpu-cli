@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+
+- Colour by meaning in boxed output: core types, cache levels, feature groups and the CPU vendor each get a colour, numbers are bold, and units, separators and borders are dimmed. 256-colour terminals get shades tuned to a dark or light background, detected by asking the terminal; others get the 16 standard colours.
+
+### Changed
+
+- `TERM=dumb` turns colour off, like `NO_COLOR`; `--color always` still forces it.
+
 ## [0.1.0] - 2026-08-14
 
 ### Added

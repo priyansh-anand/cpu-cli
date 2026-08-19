@@ -4,17 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
-### Added
+## [2.0.0] - 2026-08-19
 
-- Colour by meaning in boxed output: core types, cache levels, feature groups and the CPU vendor each get a colour, numbers are bold, and units, separators and borders are dimmed. Every colour repeats something the text already says, and plain, JSON and `--explain` output never contain colour.
-- Light-background support: on a 256-colour terminal, `cpu` asks the terminal for its colours and switches to shades tuned for a light background. It waits up to a second for the reply, so slow SSH links work, and never asks from a pipe or a background job (`cpu &`).
-- A 16-colour palette for terminals without 256 colours, which follows the terminal's own theme.
-
-### Changed
-
-- `TERM=dumb` turns colour off, like `NO_COLOR`; `--color always` still forces it.
-
-## [0.1.0] - 2026-08-14
+The first release.
 
 ### Added
 
@@ -34,16 +26,14 @@ All notable changes to this project are documented here. The format follows [Kee
 - Tables too wide for 80 columns are shown as one row per core type.
 - Release builds for macOS (Apple Silicon and Intel) and statically linked Linux (x86-64 and ARM64), a shell installer and a Homebrew tap (`brew install priyansh-anand/tap/cpu-cli`).
 - An issue template for submitting a machine snapshot; crash and unidentified-CPU messages link to it.
-
-### Changed
-
+- Colour by meaning in boxed output: core types, cache levels, feature groups and the CPU vendor each get a colour, numbers are bold, and units, separators and borders are dimmed. Every colour repeats something the text already says, and plain, JSON and `--explain` output never contain colour.
+- Light-background support: on a 256-colour terminal, `cpu` asks the terminal for its colours and switches to shades tuned for a light background. It waits up to a second for the reply, so slow SSH links work, and never asks from a pipe or a background job (`cpu &`).
+- A 16-colour palette for terminals without 256 colours, which follows the terminal's own theme.
+- `TERM=dumb` turns colour off, like `NO_COLOR`; `--color always` still forces it.
 - An unsupported operating system is named in the error, with a link to the issue tracker.
-
-### Fixed
-
-- `--dump` no longer overwrites an existing file or panics when stdout is closed, and names files by UTC time.
-- Snapshot errors are one line, and a snapshot re-packed from its extracted folder opens.
+- `--dump` never overwrites an existing file, survives a closed stdout, and names files by UTC time.
+- Snapshot errors fit on one line, and a snapshot re-packed from its extracted folder opens.
 - A crash prints a short message asking for `cpu --dump` instead of a raw backtrace.
 
-[Unreleased]: https://github.com/priyansh-anand/cpu-cli/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/priyansh-anand/cpu-cli/releases/tag/v0.1.0
+[Unreleased]: https://github.com/priyansh-anand/cpu-cli/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/priyansh-anand/cpu-cli/releases/tag/v2.0.0

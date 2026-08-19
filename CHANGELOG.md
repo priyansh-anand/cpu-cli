@@ -6,7 +6,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 
-- Colour by meaning in boxed output: core types, cache levels, feature groups and the CPU vendor each get a colour, numbers are bold, and units, separators and borders are dimmed. 256-colour terminals get shades tuned to a dark or light background, detected by asking the terminal; others get the 16 standard colours.
+- Colour by meaning in boxed output: core types, cache levels, feature groups and the CPU vendor each get a colour, numbers are bold, and units, separators and borders are dimmed. Every colour repeats something the text already says, and plain, JSON and `--explain` output never contain colour.
+- Light-background support: on a 256-colour terminal, `cpu` asks the terminal for its colours and switches to shades tuned for a light background. It waits up to a second for the reply, so slow SSH links work, and never asks from a pipe or a background job (`cpu &`).
+- A 16-colour palette for terminals without 256 colours, which follows the terminal's own theme.
 
 ### Changed
 

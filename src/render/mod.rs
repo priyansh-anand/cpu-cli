@@ -87,16 +87,37 @@ pub enum Background {
     Unknown,
 }
 
-/// Asks the terminal whether its background is light (OSC 11). Capped at 100 ms; a terminal that
-/// doesn't support the query is detected before that. Any failure is `Unknown`.
+/// Asks the terminal whether its background is light (OSC 10 and 11, fenced by DA1, so a terminal
+/// without support answers at once). Any failure is `Unknown`. Background jobs never ask: changing
+/// terminal settings from one would get it stopped by the shell (SIGTTOU).
 pub fn query_background() -> Background {
-    let mut options = terminal_colorsaurus::QueryOptions::default();
-    options.timeout = std::time::Duration::from_millis(100);
-    match terminal_colorsaurus::theme_mode(options) {
+    if !in_foreground() {
+        return Background::Unknown;
+    }
+    match terminal_colorsaurus::theme_mode(query_options()) {
         Ok(terminal_colorsaurus::ThemeMode::Light) => Background::Light,
         Ok(terminal_colorsaurus::ThemeMode::Dark) => Background::Dark,
         Err(_) => Background::Unknown,
     }
+}
+
+/// The library default (1 s): a reply that arrives after the timeout would be read by the shell
+/// instead, so a short timeout breaks slow links such as SSH.
+fn query_options() -> terminal_colorsaurus::QueryOptions {
+    terminal_colorsaurus::QueryOptions::default()
+}
+
+/// Whether this process is in the foreground process group of the terminal on stdout.
+#[cfg(unix)]
+fn in_foreground() -> bool {
+    // SAFETY: both calls only read process state; no memory is shared with the kernel.
+    let (terminal, own) = unsafe { (libc::tcgetpgrp(libc::STDOUT_FILENO), libc::getpgrp()) };
+    terminal != -1 && terminal == own
+}
+
+#[cfg(not(unix))]
+fn in_foreground() -> bool {
+    false
 }
 
 /// An unset locale is assumed UTF-8 (macOS terminals); `C`/`POSIX` and other non-UTF-8 locales are not.
@@ -329,6 +350,13 @@ mod tests {
             }),
             (Mode::Boxed, Some(Theme::Dark256))
         );
+    }
+
+    #[test]
+    fn the_query_waits_long_enough_for_a_slow_link() {
+        // A reply that arrives after the timeout lands in the user's shell, so wait as long as the
+        // library recommends; terminals without support still answer at once.
+        assert_eq!(query_options().timeout, std::time::Duration::from_secs(1));
     }
 
     #[test]

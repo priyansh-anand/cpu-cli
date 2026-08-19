@@ -113,12 +113,12 @@ flowchart TD
     depth -- no --> A16["boxed, ansi-16"]
     depth -- yes --> tty{"stdout is a terminal?"}
     tty -- no --> D["boxed, dark-256"]
-    tty -- yes --> ask{"background (OSC 11,<br/>100 ms)"}
+    tty -- yes --> ask{"foreground job?<br/>then OSC 10/11, up to 1 s"}
     ask -- light --> L["boxed, light-256"]
     ask -- "dark / unknown" --> D
 ```
 
-Colour is *forced* by `--color always`, or by `CLICOLOR_FORCE` when `NO_COLOR` is unset and `TERM` is not `dumb`. Boxed output is coloured unless `NO_COLOR` is set, `TERM=dumb`, or `--color never` is given. The background is asked with `terminal-colorsaurus` only on the terminal path, so tests and pipes never perform terminal I/O; `choose` takes the query as a function, and the tests pass one that panics.
+Colour is *forced* by `--color always`, or by `CLICOLOR_FORCE` when `NO_COLOR` is unset and `TERM` is not `dumb`. Boxed output is coloured unless `NO_COLOR` is set, `TERM=dumb`, or `--color never` is given. The background is asked with `terminal-colorsaurus` (OSC 10 and 11, fenced by DA1 so unsupported terminals answer at once, with the library's 1 s timeout: a reply arriving after the timeout would be read by the shell instead) only on the terminal path and only from the terminal's foreground process group, since a background job changing terminal settings is stopped by the shell, so tests and pipes never perform terminal I/O; `choose` takes the query as a function, and the tests pass one that panics.
 
 Plain output is ASCII-only, so it is safe in logs, pipes and any locale. A closed pipe while writing is treated as success.
 

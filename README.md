@@ -105,7 +105,7 @@ cpu --from snapshot.tar.gz   # show a saved snapshot instead of this machine
 - **In a non-UTF-8 locale** (`LANG=C`) it uses plain text, because box-drawing characters wouldn't render.
 - `--color always` (or `CLICOLOR_FORCE=1`) keeps the boxes and colour even in a pipe, e.g. for `cpu --color always | less -R`.
 - `NO_COLOR` disables colour but keeps the boxes, per [no-color.org](https://no-color.org).
-- On a 256-colour terminal, `cpu` asks the terminal whether it has a light background and uses shades tuned for it (the question takes at most 100 ms and is never asked in a pipe). Other terminals get the 16 standard colours, which follow your terminal's theme.
+- On a 256-colour terminal, `cpu` asks the terminal for its foreground and background colours and, on a light background, uses shades tuned for it. Terminals that don't support the question are detected at once; `cpu` waits up to a second for a reply, so slow SSH links still work, and never asks from a pipe or a background job (`cpu &`). Other terminals get the 16 standard colours, which follow your terminal's theme.
 - `TERM=dumb` turns colour off, like `NO_COLOR`; `--color always` still forces it.
 - Closing the pipe early (`cpu | head -1`) is not an error.
 

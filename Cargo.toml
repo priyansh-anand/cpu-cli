@@ -40,7 +40,7 @@ terminal-colorsaurus = "1"
 toml = "1.1"
 unicode-width = "0.2"
 
-[target.'cfg(target_os = "macos")'.dependencies]
+[target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
 [build-dependencies]

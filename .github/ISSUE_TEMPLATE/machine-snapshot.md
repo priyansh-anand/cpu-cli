@@ -9,7 +9,7 @@ labels: machine-snapshot
 
 **What is wrong or missing?** <!-- leave empty if you are only adding a machine -->
 
-**`cpu --version` and OS:** <!-- e.g. cpu 0.1.0 on macOS 26.1 -->
+**`cpu --version` and OS:** <!-- e.g. cpu 2.0.0 on macOS 26.1 -->
 
 ### Snapshot
 
